@@ -32,6 +32,7 @@ func InitVersionOne(e *echo.Echo, db *gorm.DB, cfg *config.Config) *APIVersionOn
 }
 
 func (av *APIVersionOne) UserAndAuth() {
+	authModel := models.NewAuthModel(av.db)
 	userModel := models.NewUserModel(av.db)
 	imageHelper, err := helpers.NewImageHelper(av.cfg.AssetStorage.Path, "profile_photos")
 	if err != nil {
@@ -39,10 +40,11 @@ func (av *APIVersionOne) UserAndAuth() {
 	}
 
 	userController := controllers.NewUserController(av.db, userModel, av.cfg, imageHelper, av.assetsPath)
-	authController := controllers.NewAuthController(av.db, userModel, av.cfg)
+	authController := controllers.NewAuthController(av.db, authModel, userModel, av.cfg)
 
 	auth := av.api.Group("/auth")
 	auth.POST("/login", authController.Login)
+	auth.POST("/refresh", authController.RefreshAccessToken)
 	// auth.POST("/signup", userController.Create)
 
 	// user := av.api.Group("/users", echojwt.WithConfig(av.cfg.JWT.Config))

@@ -14,18 +14,20 @@ import (
 )
 
 type AuthController struct {
-	db    *gorm.DB
-	model *models.UserModel
-	cfg   *config.Config
+	db        *gorm.DB
+	authModel *models.AuthModel
+	userModel *models.UserModel
+	cfg       *config.Config
 }
 
-func NewAuthController(db *gorm.DB, model *models.UserModel, cfg *config.Config) *AuthController {
-	return &AuthController{db, model, cfg}
+func NewAuthController(db *gorm.DB, authModel *models.AuthModel, userModel *models.UserModel, cfg *config.Config) *AuthController {
+	return &AuthController{db, authModel, userModel, cfg}
 }
 
-func (uh *AuthController) Login(c echo.Context) error {
+func (ah *AuthController) Login(c echo.Context) error {
 	var (
 		ctx     = c.Request().Context()
+		ip      = c.RealIP()
 		request structs.Login
 	)
 
@@ -37,7 +39,7 @@ func (uh *AuthController) Login(c echo.Context) error {
 		return helpers.Response(c, http.StatusBadRequest, nil, err.Error())
 	}
 
-	user, err := uh.model.GetByEmail(ctx, request.Email)
+	user, err := ah.userModel.GetByEmail(ctx, request.Email)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return helpers.Response(c, http.StatusNotFound, nil, "Email atau password salah")
@@ -50,14 +52,28 @@ func (uh *AuthController) Login(c echo.Context) error {
 		return helpers.Response(c, http.StatusNotFound, nil, "Email atau password salah")
 	}
 
-	accessToken, expiredAt, err := helpers.GenerateTokenJWT(user)
+	accessToken, expiredAt, err := helpers.GenerateTokenJWT(&user, false)
 	if err != nil {
 		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
 	}
 
+	refreshToken, _, err := helpers.GenerateTokenJWT(&user, true)
+	if err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
+	if err := ah.authModel.Upsert(ctx, &structs.TokenAuth{
+		UserID:       user.ID.String(),
+		RefreshToken: refreshToken,
+		IP:           ip,
+	}); err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
 	response := structs.LoginResponse{
-		AccessToken: accessToken,
-		ExpiresAt:   *expiredAt,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresAt:    *expiredAt,
 		Metadata: structs.Metadata{
 			Name:   user.Name,
 			Email:  user.Email,
@@ -65,5 +81,51 @@ func (uh *AuthController) Login(c echo.Context) error {
 		},
 	}
 
-	return helpers.Response(c, http.StatusOK, response, "")
+	return helpers.Response(c, http.StatusOK, response, "Login berhasil")
+}
+
+func (ah *AuthController) RefreshAccessToken(c echo.Context) error {
+	var (
+		ctx     = c.Request().Context()
+		request structs.RefreshAccessToken
+	)
+
+	if err := c.Bind(&request); err != nil {
+		return helpers.Response(c, http.StatusBadRequest, nil, err.Error())
+	}
+
+	if err := c.Validate(&request); err != nil {
+		return helpers.Response(c, http.StatusBadRequest, nil, err.Error())
+	}
+
+	token, err := ah.authModel.GetByRefreshToken(ctx, request.RefreshToken)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return helpers.Response(c, http.StatusUnauthorized, nil, "Data token tidak ada, harap melakukan login")
+		}
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
+	user, err := helpers.VerifyTokenJWT(request.RefreshToken, true)
+	if err != nil {
+		return helpers.Response(c, http.StatusUnauthorized, nil, err.Error())
+	}
+
+	accessToken, expiredAt, err := helpers.GenerateTokenJWT(user, false)
+	if err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
+	response := structs.LoginResponse{
+		AccessToken:  accessToken,
+		RefreshToken: token.RefreshToken,
+		ExpiresAt:    *expiredAt,
+		Metadata: structs.Metadata{
+			Name:   user.Name,
+			Email:  user.Email,
+			Access: user.Role.Access,
+		},
+	}
+
+	return helpers.Response(c, http.StatusOK, response, "Login berhasil")
 }

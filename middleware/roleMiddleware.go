@@ -2,22 +2,23 @@ package middleware
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
-	"os"
 	"simple-crud-rnd/helpers"
 	"simple-crud-rnd/structs"
 	"strings"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 )
 
 func RoleMiddleware(requiredRoles string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			secretKey := os.Getenv("JWT_SECRET")
-			user, err := parseJWT(c, []byte(secretKey))
+			authHeader := c.Request().Header.Get("Authorization")
+			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+			if tokenString == "" {
+				return helpers.Response(c, http.StatusUnauthorized, nil, "Invalid Token")
+			}
+			user, err := helpers.VerifyTokenJWT(tokenString, false)
 			if err != nil {
 				return helpers.Response(c, http.StatusUnauthorized, err.Error(), "Invalid Token")
 			}
@@ -34,39 +35,6 @@ func RoleMiddleware(requiredRoles string) echo.MiddlewareFunc {
 			return next(c)
 		}
 	}
-}
-
-// parse jwt token
-func parseJWT(c echo.Context, secretKey []byte) (*structs.User, error) {
-	user := new(structs.User)
-	authHeader := c.Request().Header.Get("Authorization")
-	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-	if tokenString == "" {
-		return nil, errors.New("missing token")
-	}
-
-	token, err := jwt.ParseWithClaims(tokenString, &structs.JWTUser{}, func(token *jwt.Token) (interface{}, error) {
-		return secretKey, nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// extract user claims if the token is valid
-	if claims, ok := token.Claims.(*structs.JWTUser); ok && token.Valid {
-		// set user properties
-		if user.Role == nil {
-			user.Role = &structs.Role{}
-		}
-
-		user.ID = claims.ID
-		user.Name = claims.Email
-		user.Role.Access = claims.Access
-
-		return user, nil
-	}
-
-	return nil, err
 }
 
 // check if the user has the required permissions
