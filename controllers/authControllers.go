@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"simple-crud-rnd/config"
 	"simple-crud-rnd/helpers"
@@ -37,7 +38,10 @@ func (uh *AuthController) Login(c echo.Context) error {
 		return helpers.Response(c, http.StatusBadRequest, nil, err.Error())
 	}
 
+	fmt.Println("email:", request.Email)
+	fmt.Println("password:", request.Password)
 	user, err := uh.model.GetByEmail(ctx, request.Email)
+	fmt.Println("user data:", user)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return helpers.Response(c, http.StatusNotFound, nil, "Email atau password salah")
@@ -45,12 +49,8 @@ func (uh *AuthController) Login(c echo.Context) error {
 		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
 	}
 
-	hashedPwd, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(request.Password))
 	if err != nil {
-		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
-	}
-
-	if user.Password != string(hashedPwd) {
 		return helpers.Response(c, http.StatusNotFound, nil, "Email atau password salah")
 	}
 

@@ -46,7 +46,7 @@ func (um *UserModel) GetById(ctx context.Context, id uuid.UUID) (structs.User, e
 
 func (um *UserModel) GetByEmail(ctx context.Context, email string) (structs.User, error) {
 	user := structs.User{}
-	err := um.db.Preload("Role").Where("deleted_at IS NULL").First(&user, email).Error
+	err := um.db.Preload("Role").Where("email = ? AND deleted_at IS NULL", email).First(&user).Error
 	return user, err
 }
 
