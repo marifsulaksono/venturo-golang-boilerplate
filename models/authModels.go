@@ -6,7 +6,6 @@ import (
 	"simple-crud-rnd/structs"
 
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 type AuthModel struct {
@@ -19,6 +18,13 @@ func NewAuthModel(db *gorm.DB) *AuthModel {
 	}
 }
 
+func (am *AuthModel) GetByUserIDAndIP(ctx context.Context, userId, ip string) (structs.TokenAuth, error) {
+	token := structs.TokenAuth{}
+	err := am.db.Select("user_id", "refresh_token", "ip").Where("user_id = ? AND ip = ?", userId, ip).
+		First(&token).Error
+	return token, err
+}
+
 func (am *AuthModel) GetByRefreshToken(ctx context.Context, refreshToken string) (structs.TokenAuth, error) {
 	token := structs.TokenAuth{}
 	err := am.db.Select("user_id", "refresh_token", "ip").Where("refresh_token = ?", refreshToken).
@@ -27,12 +33,22 @@ func (am *AuthModel) GetByRefreshToken(ctx context.Context, refreshToken string)
 }
 
 func (am *AuthModel) Upsert(ctx context.Context, payload *structs.TokenAuth) error {
-	if err := am.db.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "user_id"}, {Name: "ip"}}, // Specify columns to check for conflict
-		DoUpdates: clause.Assignments(map[string]interface{}{
-			"refresh_token": payload.RefreshToken, // Update refresh_token on conflict
-		}),
-	}).Create(&payload).Error; err != nil {
+	token, err := am.GetByUserIDAndIP(ctx, payload.UserID, payload.IP)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// Create a new data if not found
+			if err := am.db.Create(payload).Error; err != nil {
+				return err
+			}
+			return nil
+		}
+		return err
+	}
+
+	// update if exists user_id and ip
+	if err := am.db.Model(&structs.TokenAuth{}).
+		Where("user_id = ? AND ip = ?", token.UserID, token.IP).
+		Update("refresh_token", payload.RefreshToken).Error; err != nil {
 		return err
 	}
 
@@ -48,6 +64,6 @@ func (am *AuthModel) Update(ctx context.Context, payload *structs.TokenAuth) (st
 	return token, nil
 }
 
-func (am *AuthModel) Delete(ctx context.Context, payload *structs.TokenAuth) error {
-	return am.db.Where("user_id = ? AND ip = ?", payload.UserID, payload.IP).Delete(&structs.Role{}).Error
+func (am *AuthModel) Delete(ctx context.Context, refreshToken, ip string) error {
+	return am.db.Where("refresh_token = ? AND ip = ?", refreshToken, ip).Delete(&structs.TokenAuth{}).Error
 }

@@ -127,5 +127,28 @@ func (ah *AuthController) RefreshAccessToken(c echo.Context) error {
 		},
 	}
 
-	return helpers.Response(c, http.StatusOK, response, "Login berhasil")
+	return helpers.Response(c, http.StatusOK, response, "Berhasil")
+}
+
+func (ah *AuthController) Logout(c echo.Context) error {
+	var (
+		ctx     = c.Request().Context()
+		ip      = c.RealIP()
+		request structs.RefreshAccessToken
+	)
+
+	if err := c.Bind(&request); err != nil {
+		return helpers.Response(c, http.StatusBadRequest, nil, err.Error())
+	}
+
+	if err := c.Validate(&request); err != nil {
+		return helpers.Response(c, http.StatusBadRequest, nil, err.Error())
+	}
+
+	err := ah.authModel.Delete(ctx, request.RefreshToken, ip)
+	if err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
+	return helpers.Response(c, http.StatusOK, nil, "Logout berhasil")
 }
