@@ -45,8 +45,8 @@ func (av *APIVersionOne) UserAndAuth() {
 	auth := av.api.Group("/auth")
 	auth.POST("/login", authController.Login)
 	auth.POST("/refresh", authController.RefreshAccessToken)
+	auth.POST("/forgot-password", authController.ForgotPassword)
 	auth.POST("/logout", authController.Logout)
-	// auth.POST("/signup", userController.Create)
 
 	// user := av.api.Group("/users", echojwt.WithConfig(av.cfg.JWT.Config))
 	user := av.api.Group("/users")

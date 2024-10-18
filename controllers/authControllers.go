@@ -1,8 +1,10 @@
 package controllers
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
+	"os"
 	"simple-crud-rnd/config"
 	"simple-crud-rnd/helpers"
 	"simple-crud-rnd/models"
@@ -128,6 +130,39 @@ func (ah *AuthController) RefreshAccessToken(c echo.Context) error {
 	}
 
 	return helpers.Response(c, http.StatusOK, response, "Berhasil")
+}
+
+func (ah *AuthController) ForgotPassword(c echo.Context) error {
+	var (
+		ctx  = c.Request().Context()
+		body map[string]interface{}
+	)
+
+	if err := json.NewDecoder(c.Request().Body).Decode(&body); err != nil {
+		return helpers.Response(c, http.StatusBadRequest, nil, err.Error())
+	}
+
+	email := body["email"].(string)
+	user, err := ah.userModel.GetByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return helpers.Response(c, http.StatusNotFound, nil, "Email atau password salah")
+		}
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
+	key := os.Getenv("EMAIL_SECRET_KEY_16BYTE")
+	message, err := helpers.EncryptMessage(user.ID.String(), []byte(key))
+	if err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
+	err = helpers.SendMailGmail(message, "Lupa Password", user.Email)
+	if err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
+	return helpers.Response(c, http.StatusOK, nil, "Berhasil")
 }
 
 func (ah *AuthController) Logout(c echo.Context) error {
