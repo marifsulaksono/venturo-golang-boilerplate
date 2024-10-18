@@ -157,10 +157,18 @@ func (ah *AuthController) ForgotPassword(c echo.Context) error {
 		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
 	}
 
-	err = helpers.SendMailGmail(message, "Lupa Password", user.Email)
+	// send email using sendgrid
+	err = helpers.SendMailSendgrid(message, "Lupa Password", user.Name, user.Email)
 	if err != nil {
 		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
 	}
+
+	// send email using gmail
+	/* err = helpers.SendMailGmail(message, "Lupa Password", user.Email)
+	if err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+	*/
 
 	return helpers.Response(c, http.StatusOK, nil, "Berhasil")
 }
