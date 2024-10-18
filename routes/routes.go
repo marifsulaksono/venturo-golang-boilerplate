@@ -45,12 +45,9 @@ func (av *APIVersionOne) UserAndAuth() {
 	auth := av.api.Group("/auth")
 	auth.POST("/login", authController.Login)
 	auth.POST("/refresh", authController.RefreshAccessToken)
-	auth.POST("/forgot-password", authController.ForgotPassword)
 	auth.POST("/logout", authController.Logout)
 
-	// user := av.api.Group("/users", echojwt.WithConfig(av.cfg.JWT.Config))
 	user := av.api.Group("/users")
-
 	user.GET("", userController.Index, middleware.RoleMiddleware("user.view"))
 	user.POST("", userController.Create)
 	user.GET("/:id", userController.GetById, middleware.RoleMiddleware("user.view"))
@@ -63,7 +60,6 @@ func (av *APIVersionOne) Role() {
 	roleController := controllers.NewRoleController(av.db, roleModel, av.cfg)
 
 	role := av.api.Group("/roles")
-	// role := av.api.Group("/roles", echojwt.WithConfig(av.cfg.JWT.Config))
 	role.GET("", roleController.Index, middleware.RoleMiddleware("roles.view"))
 	role.POST("", roleController.Create, middleware.RoleMiddleware("roles.create"))
 	role.GET("/:id", roleController.GetById, middleware.RoleMiddleware("roles.view"))
