@@ -25,7 +25,7 @@ func InitDatabase(cfg *Config) (*gorm.DB, error) {
 	log.Println("Succees to connect to database")
 
 	if err := db.AutoMigrate(
-		&structs.User{}, &structs.Role{}, &structs.TokenAuth{},
+		&structs.User{}, &structs.Role{},
 	); err != nil {
 		log.Fatal("Failed to migrate to database:", err)
 	}
