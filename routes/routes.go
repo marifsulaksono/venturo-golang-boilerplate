@@ -39,8 +39,8 @@ func (av *APIVersionOne) UserAndAuth() {
 		log.Fatal("Failed to initiate an image helper:", err)
 	}
 
-	userController := controllers.NewUserController(av.db, userModel, av.cfg, imageHelper, av.assetsPath)
 	authController := controllers.NewAuthController(av.db, authModel, userModel, av.cfg)
+	userController := controllers.NewUserController(av.db, userModel, av.cfg, imageHelper, av.assetsPath)
 
 	auth := av.api.Group("/auth")
 	auth.POST("/login", authController.Login)
@@ -51,11 +51,11 @@ func (av *APIVersionOne) UserAndAuth() {
 	// user := av.api.Group("/users", echojwt.WithConfig(av.cfg.JWT.Config))
 	user := av.api.Group("/users")
 
-	user.GET("", userController.Index, middleware.RoleMiddleware("roles.view"))
-	user.POST("", userController.Create, middleware.RoleMiddleware("roles.create"))
-	user.GET("/:id", userController.GetById, middleware.RoleMiddleware("roles.view"))
-	user.PUT("", userController.Update, middleware.RoleMiddleware("roles.update"))
-	user.DELETE("/:id", userController.Delete, middleware.RoleMiddleware("roles.delete"))
+	user.GET("", userController.Index, middleware.RoleMiddleware("user.view"))
+	user.POST("", userController.Create)
+	user.GET("/:id", userController.GetById, middleware.RoleMiddleware("user.view"))
+	user.PUT("", userController.Update, middleware.RoleMiddleware("user.update"))
+	user.DELETE("/:id", userController.Delete, middleware.RoleMiddleware("user.delete"))
 }
 
 func (av *APIVersionOne) Role() {
@@ -64,9 +64,9 @@ func (av *APIVersionOne) Role() {
 
 	role := av.api.Group("/roles")
 	// role := av.api.Group("/roles", echojwt.WithConfig(av.cfg.JWT.Config))
-	role.GET("", roleController.Index, middleware.RoleMiddleware("user.view"))
-	role.POST("", roleController.Create)
-	role.GET("/:id", roleController.GetById, middleware.RoleMiddleware("user.view"))
-	role.PUT("", roleController.Update, middleware.RoleMiddleware("user.update"))
-	role.DELETE("/:id", roleController.Delete, middleware.RoleMiddleware("user.delete"))
+	role.GET("", roleController.Index, middleware.RoleMiddleware("roles.view"))
+	role.POST("", roleController.Create, middleware.RoleMiddleware("roles.create"))
+	role.GET("/:id", roleController.GetById, middleware.RoleMiddleware("roles.view"))
+	role.PUT("", roleController.Update, middleware.RoleMiddleware("roles.update"))
+	role.DELETE("/:id", roleController.Delete, middleware.RoleMiddleware("roles.delete"))
 }

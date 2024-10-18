@@ -17,10 +17,10 @@ func GenerateTokenJWT(user *structs.User, isRefresh bool) (string, *time.Time, e
 
 	if isRefresh {
 		expiredInSecond, _ = strconv.Atoi(os.Getenv("REFRESH_JWT_EXPIRY_IN_SECOND"))
-		secretKey = os.Getenv("ACCESS_JWT_SECRET")
+		secretKey = os.Getenv("REFRESH_JWT_SECRET")
 	} else {
 		expiredInSecond, _ = strconv.Atoi(os.Getenv("ACCESS_JWT_EXPIRY_IN_SECOND"))
-		secretKey = os.Getenv("REFRESH_JWT_SECRET")
+		secretKey = os.Getenv("ACCESS_JWT_SECRET")
 	}
 
 	expiredAt := time.Now().Add(time.Second * time.Duration(expiredInSecond))
@@ -37,10 +37,7 @@ func GenerateTokenJWT(user *structs.User, isRefresh bool) (string, *time.Time, e
 	}
 
 	// Declare the token with the HS256 algorithm used for signing, and the claims.
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	// Create the JWT string.
-	tokenString, err := token.SignedString([]byte(secretKey))
+	tokenString, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(secretKey))
 	if err != nil {
 		return "", nil, err
 	}
@@ -55,9 +52,9 @@ func VerifyTokenJWT(tokenString string, isRefresh bool) (*structs.User, error) {
 	)
 
 	if isRefresh {
-		secretKey = os.Getenv("REFRESH_JWT_EXPIRY_IN_SECOND")
+		secretKey = os.Getenv("REFRESH_JWT_SECRET")
 	} else {
-		secretKey = os.Getenv("ACCESS_JWT_EXPIRY_IN_SECOND")
+		secretKey = os.Getenv("ACCESS_JWT_SECRET")
 	}
 
 	token, err := jwt.ParseWithClaims(tokenString, &structs.JWTUser{}, func(token *jwt.Token) (interface{}, error) {
