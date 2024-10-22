@@ -18,6 +18,7 @@ type (
 		HTTP         HTTP
 		JWT          JWT
 		AssetStorage AssetStorage
+		RabbitMQ     RabbitMQConf
 	}
 	Database struct {
 		Username string
@@ -38,6 +39,14 @@ type (
 	}
 	AssetStorage struct {
 		Path string
+	}
+	RabbitMQConf struct {
+		Username string
+		Password string
+		Host     string
+		Port     string
+		Vhost    string
+		Queue    string
 	}
 )
 
@@ -71,6 +80,13 @@ func LoadConfig() (*Config, error) {
 	}
 	storagePath, _ := configDefaults("ASSET_PATH", "./")
 
+	rmqUser, _ := configDefaults("RQ_USERNAME", "guest")
+	rmqPass, _ := configDefaults("RQ_PASSWORD", "guest")
+	rmqHost, _ := configDefaults("RQ_HOST", "127.0.0.1")
+	rmqPort, _ := configDefaults("RQ_PORT", "5672")
+	rmqVhost, _ := configDefaults("RQ_VHOST", "/")
+	rmqQueue, _ := configDefaults("RQ_QUEUE", "my_queue")
+
 	var cfg Config = Config{
 		Database: Database{
 			Username: dbUsername,
@@ -91,6 +107,14 @@ func LoadConfig() (*Config, error) {
 		},
 		AssetStorage: AssetStorage{
 			Path: storagePath,
+		},
+		RabbitMQ: RabbitMQConf{
+			Username: rmqUser,
+			Password: rmqPass,
+			Host:     rmqHost,
+			Port:     rmqPort,
+			Vhost:    rmqVhost,
+			Queue:    rmqQueue,
 		},
 	}
 

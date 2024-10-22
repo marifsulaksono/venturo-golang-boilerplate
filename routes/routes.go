@@ -45,7 +45,7 @@ func (av *APIVersionOne) UserAndAuth() {
 	auth := av.api.Group("/auth")
 	auth.POST("/login", authController.Login)
 	auth.POST("/refresh", authController.RefreshAccessToken)
-	auth.POST("/forgot-password", authController.ForgotPassword)
+	auth.POST("/forgot-password", authController.ForgotPasswordWithRabbitMQ)
 	auth.POST("/logout", authController.Logout)
 
 	user := av.api.Group("/users")

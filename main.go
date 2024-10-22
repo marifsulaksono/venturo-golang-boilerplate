@@ -10,12 +10,12 @@ import (
 func main() {
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatal("Error loading configs")
+		log.Fatalln("Error loading configs")
 	}
 
 	db, err := config.InitDatabase(cfg)
 	if err != nil {
-		log.Fatal("Error opening database")
+		log.Fatalln("Error opening database")
 	}
 
 	e := routes.NewHTTPServer(cfg, db)

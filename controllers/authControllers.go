@@ -8,6 +8,7 @@ import (
 	"simple-crud-rnd/config"
 	"simple-crud-rnd/helpers"
 	"simple-crud-rnd/models"
+	"simple-crud-rnd/rabbitmq"
 	"simple-crud-rnd/structs"
 
 	"github.com/labstack/echo/v4"
@@ -204,6 +205,57 @@ func (ah *AuthController) ForgotPasswordWithAsync(c echo.Context) error {
 
 	// send email using gmail
 	go helpers.SendMailGmailWithAsync(message, "Lupa Password", user.Email)
+
+	return helpers.Response(c, 200, message, fmt.Sprintf("Kami telah mengirim email ke %s, silakan cek secara berkala", email))
+}
+
+func (ah *AuthController) ForgotPasswordWithRabbitMQ(c echo.Context) error {
+	var (
+		ctx  = c.Request().Context()
+		body map[string]interface{}
+	)
+
+	if err := json.NewDecoder(c.Request().Body).Decode(&body); err != nil {
+		return helpers.Response(c, http.StatusBadRequest, nil, err.Error())
+	}
+
+	email := body["email"].(string)
+	user, err := ah.userModel.GetByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return helpers.Response(c, http.StatusNotFound, nil, "Email tidak ditemukan")
+		}
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
+	message, err := helpers.EncryptMessageRSA(user.ID.String())
+	if err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
+	payload := structs.Mail{
+		TargetName:  user.Name,
+		TargetEmail: user.Email,
+		Subject:     "Lupa Password",
+		Body:        message,
+	}
+
+	status, response, data := rabbitmq.RequestCommand(
+		rabbitmq.SendMailSendgrid,
+		"",
+		payload,
+		true,
+	)
+
+	fmt.Println("status:", status)
+	fmt.Println("response:", response)
+	fmt.Println("data:", data)
+
+	// send email using gmail
+	// err = helpers.SendMailGmail(message, "Lupa Password", user.Email)
+	// if err != nil {
+	// 	return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	// }
 
 	return helpers.Response(c, 200, message, fmt.Sprintf("Kami telah mengirim email ke %s, silakan cek secara berkala", email))
 }
