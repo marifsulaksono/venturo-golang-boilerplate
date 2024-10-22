@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"simple-crud-rnd/config"
 	"simple-crud-rnd/helpers"
@@ -156,20 +157,55 @@ func (ah *AuthController) ForgotPassword(c echo.Context) error {
 	}
 
 	// send email using sendgrid
-	err = helpers.SendMailSendgrid(message, "Lupa Password", user.Name, user.Email)
-	if err != nil {
-		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
-	}
-
-	// send email using gmail
 	/*
-		err = helpers.SendMailGmail(message, "Lupa Password", user.Email)
+		err = helpers.SendMailSendgrid(message, "Lupa Password", user.Name, user.Email)
 		if err != nil {
 			return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
 		}
 	*/
 
-	return helpers.Response(c, http.StatusOK, message, "Berhasil")
+	// send email using gmail
+	err = helpers.SendMailGmail(message, "Lupa Password", user.Email)
+	if err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
+	return helpers.Response(c, 200, message, fmt.Sprintf("Kami telah mengirim email ke %s, silakan cek secara berkala", email))
+}
+
+func (ah *AuthController) ForgotPasswordWithAsync(c echo.Context) error {
+	var (
+		ctx  = c.Request().Context()
+		body map[string]interface{}
+	)
+
+	if err := json.NewDecoder(c.Request().Body).Decode(&body); err != nil {
+		return helpers.Response(c, http.StatusBadRequest, nil, err.Error())
+	}
+
+	email := body["email"].(string)
+	user, err := ah.userModel.GetByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return helpers.Response(c, http.StatusNotFound, nil, "Email tidak ditemukan")
+		}
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
+	message, err := helpers.EncryptMessageRSA(user.ID.String())
+	if err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
+	// send email using sendgrid
+	/*
+		go helpers.SendMailSendgrid(message, "Lupa Password", user.Name, user.Email)
+	*/
+
+	// send email using gmail
+	go helpers.SendMailGmailWithAsync(message, "Lupa Password", user.Email)
+
+	return helpers.Response(c, 200, message, fmt.Sprintf("Kami telah mengirim email ke %s, silakan cek secara berkala", email))
 }
 
 func (ah *AuthController) Logout(c echo.Context) error {
