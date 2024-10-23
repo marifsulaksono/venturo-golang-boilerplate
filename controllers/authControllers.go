@@ -11,6 +11,7 @@ import (
 	"simple-crud-rnd/rabbitmq"
 	"simple-crud-rnd/structs"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -20,11 +21,12 @@ type AuthController struct {
 	db        *gorm.DB
 	authModel *models.AuthModel
 	userModel *models.UserModel
+	jobModel  *models.JobModel
 	cfg       *config.Config
 }
 
-func NewAuthController(db *gorm.DB, authModel *models.AuthModel, userModel *models.UserModel, cfg *config.Config) *AuthController {
-	return &AuthController{db, authModel, userModel, cfg}
+func NewAuthController(db *gorm.DB, authModel *models.AuthModel, userModel *models.UserModel, jobModel *models.JobModel, cfg *config.Config) *AuthController {
+	return &AuthController{db, authModel, userModel, jobModel, cfg}
 }
 
 func (ah *AuthController) Login(c echo.Context) error {
@@ -198,15 +200,40 @@ func (ah *AuthController) ForgotPasswordWithAsync(c echo.Context) error {
 		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
 	}
 
+	payload := structs.Mail{
+		TargetName:  user.Name,
+		TargetEmail: user.Email,
+		Subject:     "Lupa Password",
+		Body:        message,
+	}
+
+	jsonString, err := json.Marshal(payload)
+	if err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
+	job := structs.Job{
+		ID:       uuid.NewString(),
+		JobName:  "Forgot Password " + user.Email,
+		Payload:  string(jsonString),
+		Status:   structs.JOB_PROGRESS,
+		Attempts: 0,
+	}
+
+	err = ah.jobModel.Create(ctx, &job)
+	if err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
 	// send email using sendgrid
 	/*
-		go helpers.SendMailSendgrid(message, "Lupa Password", user.Name, user.Email)
+		go helpers.SendMailSendgrid(message, "Lupa Password", user.Name, user.Email, job.ID)
 	*/
 
 	// send email using gmail
-	go helpers.SendMailGmailWithAsync(message, "Lupa Password", user.Email)
+	go helpers.SendMailGmailWithAsync(payload.Body, payload.Subject, payload.TargetEmail, job.ID)
 
-	return helpers.Response(c, 200, message, fmt.Sprintf("Kami telah mengirim email ke %s, silakan cek secara berkala", email))
+	return helpers.Response(c, 200, job, fmt.Sprintf("Kami telah mengirim email ke %s, silakan cek secara berkala", email))
 }
 
 func (ah *AuthController) ForgotPasswordWithRabbitMQ(c echo.Context) error {
@@ -240,24 +267,47 @@ func (ah *AuthController) ForgotPasswordWithRabbitMQ(c echo.Context) error {
 		Body:        message,
 	}
 
-	status, response, data := rabbitmq.RequestCommand(
-		rabbitmq.SendMailSendgrid,
-		"",
-		payload,
-		true,
-	)
+	jsonString, err := json.Marshal(payload)
+	if err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
 
-	fmt.Println("status:", status)
-	fmt.Println("response:", response)
-	fmt.Println("data:", data)
+	job := structs.Job{
+		ID:       uuid.NewString(),
+		JobName:  "Forgot Password " + user.Email,
+		Payload:  string(jsonString),
+		Status:   structs.JOB_PROGRESS,
+		Attempts: 0,
+	}
 
-	// send email using gmail
-	// err = helpers.SendMailGmail(message, "Lupa Password", user.Email)
-	// if err != nil {
-	// 	return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
-	// }
+	err = ah.jobModel.Create(ctx, &job)
+	if err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
 
-	return helpers.Response(c, 200, message, fmt.Sprintf("Kami telah mengirim email ke %s, silakan cek secara berkala", email))
+	go func() {
+		// send email using sendgrid
+		/*
+			_, _, _ = rabbitmq.RequestCommand(
+				rabbitmq.SendMailSendgrid,
+				"",
+				payload,
+				job.ID,
+				true,
+			)
+		*/
+
+		// send email using gmail
+		_, _, _ = rabbitmq.RequestCommand(
+			rabbitmq.SendMailGmail,
+			"",
+			payload,
+			job.ID,
+			true,
+		)
+	}()
+
+	return helpers.Response(c, 200, job, fmt.Sprintf("Kami telah mengirim email ke %s, silakan cek secara berkala", email))
 }
 
 func (ah *AuthController) Logout(c echo.Context) error {

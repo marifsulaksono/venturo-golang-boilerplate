@@ -68,7 +68,7 @@ func processData(rbMq rmqauto.IRqAutoConnect, data amqp.Delivery) {
 	var request structs.Request
 	err1 := json.Unmarshal(data.Body, &request)
 	if err1 != nil {
-		log.Println("ERROR :", err1)
+		log.Println("ERROR:", err1)
 	}
 	log.Println("data.ReplyTo : ", data.ReplyTo)
 	response := HandleRequest(request)

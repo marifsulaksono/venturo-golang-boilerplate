@@ -34,18 +34,19 @@ func InitVersionOne(e *echo.Echo, db *gorm.DB, cfg *config.Config) *APIVersionOn
 func (av *APIVersionOne) UserAndAuth() {
 	authModel := models.NewAuthModel(av.db)
 	userModel := models.NewUserModel(av.db)
+	jobModel := models.NewJobModel(av.db)
 	imageHelper, err := helpers.NewImageHelper(av.cfg.AssetStorage.Path, "profile_photos")
 	if err != nil {
 		log.Fatal("Failed to initiate an image helper:", err)
 	}
 
-	authController := controllers.NewAuthController(av.db, authModel, userModel, av.cfg)
+	authController := controllers.NewAuthController(av.db, authModel, userModel, jobModel, av.cfg)
 	userController := controllers.NewUserController(av.db, userModel, av.cfg, imageHelper, av.assetsPath)
 
 	auth := av.api.Group("/auth")
 	auth.POST("/login", authController.Login)
 	auth.POST("/refresh", authController.RefreshAccessToken)
-	auth.POST("/forgot-password", authController.ForgotPasswordWithRabbitMQ)
+	auth.POST("/forgot-password", authController.ForgotPasswordWithAsync)
 	auth.POST("/logout", authController.Logout)
 
 	user := av.api.Group("/users")
@@ -67,3 +68,15 @@ func (av *APIVersionOne) Role() {
 	role.PUT("", roleController.Update, middleware.RoleMiddleware("roles.update"))
 	role.DELETE("/:id", roleController.Delete, middleware.RoleMiddleware("roles.delete"))
 }
+
+// func (av *APIVersionOne) Job() {
+// 	jobModel := models.NewJobModel(av.db)
+// 	jobController := controllers.NewJobController(av.db, jobModel, av.cfg)
+
+// 	job := av.api.Group("/jobs")
+// 	job.GET("", jobController.Index, middleware.RoleMiddleware("jobs.view"))
+// 	job.POST("", jobController.Create, middleware.RoleMiddleware("jobs.create"))
+// 	job.GET("/:id", jobController.GetById, middleware.RoleMiddleware("jobs.view"))
+// 	job.PUT("", jobController.Update, middleware.RoleMiddleware("jobs.update"))
+// 	job.DELETE("/:id", jobController.Delete, middleware.RoleMiddleware("jobs.delete"))
+// }

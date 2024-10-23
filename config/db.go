@@ -9,6 +9,8 @@ import (
 	"gorm.io/gorm"
 )
 
+var DB *gorm.DB
+
 func InitDatabase(cfg *Config) (*gorm.DB, error) {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		cfg.Database.Username,
@@ -23,9 +25,10 @@ func InitDatabase(cfg *Config) (*gorm.DB, error) {
 	}
 
 	log.Println("Succees to connect to database")
+	DB = db
 
 	if err := db.AutoMigrate(
-		&structs.User{}, &structs.Role{}, &structs.TokenAuth{},
+		&structs.User{}, &structs.Role{}, &structs.TokenAuth{}, &structs.Job{},
 	); err != nil {
 		log.Fatal("Failed to migrate to database:", err)
 	}

@@ -29,10 +29,11 @@ func (connection *RabbitMQConnection) GlobalConn() {
 	connection.QueueName = os.Getenv("RQ_QUEUE")
 }
 
-func RequestCommand(route string, param string, data interface{}, freplay bool) (interface{}, interface{}, interface{}) {
+func RequestCommand(route string, param string, data interface{}, id string, freplay bool) (interface{}, interface{}, interface{}) {
 	connRabbitmq := RabbitMQConnection{}
 	connRabbitmq.GlobalConn()
 	return RabbitMQRPC(&connRabbitmq, structs.RabbitMQDefaultPayload{
+		JobId: id,
 		Route: route,
 		Param: param,
 		Data:  data,

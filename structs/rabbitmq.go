@@ -1,6 +1,7 @@
 package structs
 
 type RabbitMQDefaultPayload struct {
+	JobId string      `json:"JobId"`
 	Route string      `json:"command"`
 	Param interface{} `json:"param"`
 	Data  interface{} `json:"data"`
@@ -18,6 +19,7 @@ type MessagePayload struct {
 
 type Request struct {
 	ID         int64       `json:"Id"`
+	JobId      string      `json:"JobId"`
 	Command    string      `json:"Command"`
 	Time       string      `json:"Time"`
 	ModuleId   string      `json:"ModuleId"`
