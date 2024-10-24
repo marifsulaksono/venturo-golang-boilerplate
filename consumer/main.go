@@ -2,15 +2,20 @@ package main
 
 import (
 	"log"
-	"os"
+	"simple-crud-rnd/config"
 	"simple-crud-rnd/rabbitmq"
-
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	if err := godotenv.Load(); err != nil {
-		log.Fatalf("Error load .env: %v", err)
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		log.Fatalln("Error loading configs")
 	}
-	rabbitmq.RabbitMQ(os.Getenv("RQ_QUEUE"))
+
+	db, err := config.InitDatabase(cfg)
+	if err != nil {
+		log.Fatalln("Error opening database")
+	}
+
+	rabbitmq.RabbitMQ(cfg.RabbitMQ.Queue, db)
 }

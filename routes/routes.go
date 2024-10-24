@@ -46,7 +46,7 @@ func (av *APIVersionOne) UserAndAuth() {
 	auth := av.api.Group("/auth")
 	auth.POST("/login", authController.Login)
 	auth.POST("/refresh", authController.RefreshAccessToken)
-	auth.POST("/forgot-password", authController.ForgotPasswordWithAsync)
+	auth.POST("/forgot-password", authController.ForgotPasswordWithRabbitMQ)
 	auth.POST("/logout", authController.Logout)
 
 	user := av.api.Group("/users")
@@ -69,14 +69,14 @@ func (av *APIVersionOne) Role() {
 	role.DELETE("/:id", roleController.Delete, middleware.RoleMiddleware("roles.delete"))
 }
 
-// func (av *APIVersionOne) Job() {
-// 	jobModel := models.NewJobModel(av.db)
-// 	jobController := controllers.NewJobController(av.db, jobModel, av.cfg)
+func (av *APIVersionOne) Job() {
+	jobModel := models.NewJobModel(av.db)
+	jobController := controllers.NewJobController(av.db, jobModel, av.cfg)
 
-// 	job := av.api.Group("/jobs")
-// 	job.GET("", jobController.Index, middleware.RoleMiddleware("jobs.view"))
-// 	job.POST("", jobController.Create, middleware.RoleMiddleware("jobs.create"))
-// 	job.GET("/:id", jobController.GetById, middleware.RoleMiddleware("jobs.view"))
-// 	job.PUT("", jobController.Update, middleware.RoleMiddleware("jobs.update"))
-// 	job.DELETE("/:id", jobController.Delete, middleware.RoleMiddleware("jobs.delete"))
-// }
+	job := av.api.Group("/jobs")
+	job.GET("", jobController.Index)
+	// job.POST("", jobController.Create, middleware.RoleMiddleware("jobs.create"))
+	job.GET("/:id", jobController.GetById, middleware.RoleMiddleware("jobs.view"))
+	// job.PUT("", jobController.Update, middleware.RoleMiddleware("jobs.update"))
+	// job.DELETE("/:id", jobController.Delete, middleware.RoleMiddleware("jobs.delete"))
+}

@@ -10,9 +10,10 @@ import (
 	"simple-crud-rnd/structs"
 
 	"github.com/streadway/amqp"
+	"gorm.io/gorm"
 )
 
-func RabbitMQ(queueName string) {
+func RabbitMQ(queueName string, db *gorm.DB) {
 	log.Println("connect to rabbit mq")
 
 	rbMq := rmqauto.CreateRqPubConsumer()
@@ -37,7 +38,7 @@ func RabbitMQ(queueName string) {
 	deliveredMsg := make(chan amqp.Delivery)
 	defer close(deliveredMsg)
 
-	processMessages(rbMq, deliveredMsg)
+	processMessages(rbMq, db, deliveredMsg)
 
 	go func() {
 		for data := range message {
@@ -50,19 +51,19 @@ func RabbitMQ(queueName string) {
 	<-forever
 }
 
-func processMessages(rbMq rmqauto.IRqAutoConnect, msgCh <-chan amqp.Delivery) {
+func processMessages(rbMq rmqauto.IRqAutoConnect, db *gorm.DB, msgCh <-chan amqp.Delivery) {
 	for i := 0; i < 300; i++ {
-		go processMessage(rbMq, msgCh)
+		go processMessage(rbMq, db, msgCh)
 	}
 }
 
-func processMessage(rbMq rmqauto.IRqAutoConnect, msgCh <-chan amqp.Delivery) {
+func processMessage(rbMq rmqauto.IRqAutoConnect, db *gorm.DB, msgCh <-chan amqp.Delivery) {
 	for data := range msgCh {
-		processData(rbMq, data)
+		processData(rbMq, data, db)
 	}
 }
 
-func processData(rbMq rmqauto.IRqAutoConnect, data amqp.Delivery) {
+func processData(rbMq rmqauto.IRqAutoConnect, data amqp.Delivery, db *gorm.DB) {
 	defer func() { recover() }()
 
 	var request structs.Request
@@ -71,7 +72,7 @@ func processData(rbMq rmqauto.IRqAutoConnect, data amqp.Delivery) {
 		log.Println("ERROR:", err1)
 	}
 	log.Println("data.ReplyTo : ", data.ReplyTo)
-	response := HandleRequest(request)
+	response := HandleRequest(request, db)
 	log.Println("Response :", response)
 
 	if data.ReplyTo == "" {
