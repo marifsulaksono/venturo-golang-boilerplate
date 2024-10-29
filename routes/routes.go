@@ -41,12 +41,12 @@ func (av *APIVersionOne) UserAndAuth() {
 	}
 
 	authController := controllers.NewAuthController(av.db, authModel, userModel, jobModel, av.cfg)
-	userController := controllers.NewUserController(av.db, userModel, av.cfg, imageHelper, av.assetsPath)
+	userController := controllers.NewUserController(av.db, userModel, jobModel, av.cfg, imageHelper, av.assetsPath)
 
 	auth := av.api.Group("/auth")
 	auth.POST("/login", authController.Login)
 	auth.POST("/refresh", authController.RefreshAccessToken)
-	auth.POST("/forgot-password", authController.ForgotPasswordWithRabbitMQ)
+	auth.POST("/forgot-password", authController.ForgotPassword)
 	auth.POST("/logout", authController.Logout)
 
 	user := av.api.Group("/users")
@@ -55,6 +55,7 @@ func (av *APIVersionOne) UserAndAuth() {
 	user.GET("/:id", userController.GetById, middleware.RoleMiddleware("user.view"))
 	user.PUT("", userController.Update, middleware.RoleMiddleware("user.update"))
 	user.DELETE("/:id", userController.Delete, middleware.RoleMiddleware("user.delete"))
+	user.POST("/export", userController.ExportDataUserToCsvWithRabbitMQ)
 }
 
 func (av *APIVersionOne) Role() {

@@ -29,7 +29,7 @@ func HandleRequest(data structs.Request, db *gorm.DB) string {
 		}
 
 		// Kirim email menggunakan Gmail
-		err = helpers.SendMailGmail(req.Body, req.Subject, req.TargetEmail)
+		err = helpers.SendMailGmail(req.Body, req.Subject, req.TargetEmail, "")
 
 		if err != nil {
 			// Jika terjadi error, update status job menjadi gagal

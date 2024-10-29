@@ -8,7 +8,6 @@ import (
 	"simple-crud-rnd/config"
 	"simple-crud-rnd/helpers"
 	"simple-crud-rnd/models"
-	"simple-crud-rnd/rabbitmq"
 	"simple-crud-rnd/structs"
 
 	"github.com/google/uuid"
@@ -145,7 +144,11 @@ func (ah *AuthController) ForgotPassword(c echo.Context) error {
 		return helpers.Response(c, http.StatusBadRequest, nil, err.Error())
 	}
 
-	email := body["email"].(string)
+	email, ok := body["email"].(string)
+	if !ok {
+		return helpers.Response(c, http.StatusBadRequest, nil, "Email tidak boleh kosong dan harus berupa string")
+	}
+
 	user, err := ah.userModel.GetByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -161,14 +164,14 @@ func (ah *AuthController) ForgotPassword(c echo.Context) error {
 
 	// send email using sendgrid
 	/*
-		err = helpers.SendMailSendgrid(message, "Lupa Password", user.Name, user.Email)
+		err = helpers.SendMailSendgrid(message, "Lupa Password", user.Name, user.Email, "")
 		if err != nil {
 			return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
 		}
 	*/
 
 	// send email using gmail
-	err = helpers.SendMailGmail(message, "Lupa Password", user.Email)
+	err = helpers.SendMailGmail(message, "Lupa Password", user.Email, "")
 	if err != nil {
 		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
 	}
@@ -186,7 +189,11 @@ func (ah *AuthController) ForgotPasswordWithAsync(c echo.Context) error {
 		return helpers.Response(c, http.StatusBadRequest, nil, err.Error())
 	}
 
-	email := body["email"].(string)
+	email, ok := body["email"].(string)
+	if !ok {
+		return helpers.Response(c, http.StatusBadRequest, nil, "Email tidak boleh kosong dan harus berupa string")
+	}
+
 	user, err := ah.userModel.GetByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -232,80 +239,6 @@ func (ah *AuthController) ForgotPasswordWithAsync(c echo.Context) error {
 
 	// send email using gmail
 	go helpers.SendMailGmailWithAsync(payload.Body, payload.Subject, payload.TargetEmail, job.ID)
-
-	return helpers.Response(c, 200, job, fmt.Sprintf("Kami telah mengirim email ke %s, silakan cek secara berkala", email))
-}
-
-func (ah *AuthController) ForgotPasswordWithRabbitMQ(c echo.Context) error {
-	var (
-		ctx  = c.Request().Context()
-		body map[string]interface{}
-	)
-
-	if err := json.NewDecoder(c.Request().Body).Decode(&body); err != nil {
-		return helpers.Response(c, http.StatusBadRequest, nil, err.Error())
-	}
-
-	email := body["email"].(string)
-	user, err := ah.userModel.GetByEmail(ctx, email)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return helpers.Response(c, http.StatusNotFound, nil, "Email tidak ditemukan")
-		}
-		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
-	}
-
-	message, err := helpers.EncryptMessageRSA(user.ID.String())
-	if err != nil {
-		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
-	}
-
-	payload := structs.Mail{
-		TargetName:  user.Name,
-		TargetEmail: user.Email,
-		Subject:     "Lupa Password",
-		Body:        message,
-	}
-
-	jsonString, err := json.Marshal(payload)
-	if err != nil {
-		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
-	}
-
-	job := structs.Job{
-		ID:       uuid.NewString(),
-		JobName:  "Forgot Password " + user.Email,
-		Payload:  string(jsonString),
-		Status:   structs.JOB_PROGRESS,
-		Attempts: 0,
-	}
-
-	err = ah.jobModel.Create(ctx, &job)
-	if err != nil {
-		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
-	}
-
-	go func() {
-		// send email using sendgrid
-		/*
-			_, _, _ = rabbitmq.RequestCommand(
-				rabbitmq.SendMailSendgrid,
-				"",
-				payload,
-				job.ID,
-				true,
-			)
-		*/
-
-		// send email using gmail
-		_, _, _ = rabbitmq.RequestCommand(
-			rabbitmq.SendMailGmail,
-			"",
-			payload,
-			job.ID,
-			true,
-		)
-	}()
 
 	return helpers.Response(c, 200, job, fmt.Sprintf("Kami telah mengirim email ke %s, silakan cek secara berkala", email))
 }

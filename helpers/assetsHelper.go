@@ -16,7 +16,7 @@ type (
 )
 
 func NewImageHelper(storagePath, category string) (*ImageHelper, error) {
-	fullPath := fmt.Sprintf("%s/%s/%s", storagePath, "images", category)
+	fullPath := fmt.Sprintf("%s/%s/%s", storagePath, "assets", category)
 	if err := os.MkdirAll(fullPath, os.ModePerm); err != nil {
 		return &ImageHelper{}, nil
 	}

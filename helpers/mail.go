@@ -14,7 +14,7 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
-func SendMailGmail(body, subject, to string) error {
+func SendMailGmail(body, subject, to, attachmentPath string) error {
 	host := os.Getenv("SMTP_HOST")
 	port, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
 	sender := os.Getenv("SMTP_SENDER_NAME")
@@ -29,6 +29,14 @@ func SendMailGmail(body, subject, to string) error {
 	mailer.SetHeader("To", to)
 	mailer.SetHeader("Subject", subject)
 	mailer.SetBody("text/html", body)
+
+	if attachmentPath != "" {
+		if _, err := os.Stat(attachmentPath); err == nil {
+			mailer.Attach(attachmentPath)
+		} else {
+			return fmt.Errorf("attachment file not found: %v", err)
+		}
+	}
 
 	// set messsage dialer
 	dialer := gomail.NewDialer(host, port, email, pass)

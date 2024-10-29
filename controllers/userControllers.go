@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -8,6 +9,7 @@ import (
 	"simple-crud-rnd/config"
 	"simple-crud-rnd/helpers"
 	"simple-crud-rnd/models"
+	rmq "simple-crud-rnd/rabbitmq"
 	"simple-crud-rnd/structs"
 	"strconv"
 	"time"
@@ -20,13 +22,14 @@ import (
 type UserController struct {
 	db          *gorm.DB
 	model       *models.UserModel
+	jobModel    *models.JobModel
 	cfg         *config.Config
 	imageHelper *helpers.ImageHelper
 	assetPath   string
 }
 
-func NewUserController(db *gorm.DB, model *models.UserModel, cfg *config.Config, imageHelper *helpers.ImageHelper, assetPath string) *UserController {
-	return &UserController{db, model, cfg, imageHelper, assetPath}
+func NewUserController(db *gorm.DB, model *models.UserModel, jobModel *models.JobModel, cfg *config.Config, imageHelper *helpers.ImageHelper, assetPath string) *UserController {
+	return &UserController{db, model, jobModel, cfg, imageHelper, assetPath}
 }
 
 func (uh *UserController) Index(c echo.Context) error {
@@ -141,4 +144,109 @@ func (uh *UserController) Delete(c echo.Context) error {
 	}
 
 	return helpers.Response(c, http.StatusOK, true, "Berhasil hapus user")
+}
+
+func (uh *UserController) ExportDataUserToCsv(c echo.Context) error {
+	var (
+		ctx = c.Request().Context()
+		to  = c.QueryParam("to")
+	)
+
+	limit := 10
+	offset := (1 - 1) * limit
+	data, _, err := uh.model.GetAll(ctx, limit, offset)
+	if err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, data, err.Error())
+	}
+
+	filename := fmt.Sprintf("%s/users_%s.csv", "./assets", "users"+time.Now().Format("20061021545"))
+	err = helpers.ExportUsersToCSV(filename, data, []string{"Name", "Email", "PhoneNumber", "CreatedAt"})
+	if err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, data, err.Error())
+	}
+
+	job := structs.Job{
+		ID:       uuid.NewString(),
+		JobName:  "Export Data User",
+		Payload:  filename,
+		Status:   structs.JOB_PROGRESS,
+		Attempts: 0,
+	}
+
+	err = uh.jobModel.Create(ctx, &job)
+	if err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
+	// send email using gmail
+	go func() {
+		err := helpers.SendMailGmail("Berikut adalah file export data users", job.JobName, to, filename)
+		if err != nil {
+			log.Printf("=> send email to %s is failure. error: %v", to, err.Error())
+			updateErr := config.DB.Model(&structs.Job{}).
+				Where("id = ?", job.ID).
+				Update("status", structs.JOB_FAILED).Error
+			if updateErr != nil {
+				log.Printf("Failed to update job status to failed for job ID: %s. Error: %v", job.ID, updateErr)
+			}
+		}
+
+		updateErr := config.DB.Model(&structs.Job{}).
+			Where("id = ?", job.ID).
+			Update("status", structs.JOB_SUCCESS).Error
+		if updateErr != nil {
+			log.Printf("Failed to update job status to failed for job ID: %s. Error: %v", job.ID, updateErr)
+		}
+		log.Printf("send email to %s is successfully", to)
+	}()
+
+	return helpers.Response(c, http.StatusOK, job, fmt.Sprintf("Permintaan sedang diproses dan file akan kami kirim ke email %s. Silakan cek secara berkala", to))
+}
+
+func (uh *UserController) ExportDataUserToCsvWithRabbitMQ(c echo.Context) error {
+	var (
+		ctx = c.Request().Context()
+		to  = c.QueryParam("to")
+	)
+
+	limit := 10
+	offset := (1 - 1) * limit
+	data, _, err := uh.model.GetAll(ctx, limit, offset)
+	if err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, data, err.Error())
+	}
+
+	filename := fmt.Sprintf("%s/users_%s.csv", "./assets", "users"+time.Now().Format("20061021545"))
+	err = helpers.ExportUsersToCSV(filename, data, []string{"Name", "Email", "PhoneNumber", "CreatedAt"})
+	if err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, data, err.Error())
+	}
+
+	job := structs.Job{
+		ID:       uuid.NewString(),
+		JobName:  "Export Data User",
+		Payload:  filename,
+		Status:   structs.JOB_PROGRESS,
+		Attempts: 0,
+	}
+
+	err = uh.jobModel.Create(ctx, &job)
+	if err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
+	jobString, err := json.Marshal(job)
+	if err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
+	// send email using gmail
+	if err := rmq.SendMessage(uh.cfg, &rmq.PublishMessage{
+		Key:     helpers.KEY_EXPORT_DATA_USER,
+		Payload: to + "|||" + string(jobString),
+	}); err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
+	return helpers.Response(c, http.StatusOK, job, fmt.Sprintf("Permintaan sedang diproses dan file akan kami kirim ke email %s. Silakan cek secara berkala", to))
 }

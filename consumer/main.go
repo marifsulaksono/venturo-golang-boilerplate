@@ -2,8 +2,12 @@ package main
 
 import (
 	"log"
+	"os"
+	"os/signal"
 	"simple-crud-rnd/config"
-	"simple-crud-rnd/rabbitmq"
+	rmq "simple-crud-rnd/rabbitmq"
+	"syscall"
+	"time"
 )
 
 func main() {
@@ -12,10 +16,23 @@ func main() {
 		log.Fatalln("Error loading configs")
 	}
 
-	db, err := config.InitDatabase(cfg)
+	consumer, err := rmq.NewRabbitMQConsumer(cfg)
 	if err != nil {
-		log.Fatalln("Error opening database")
+		log.Fatalf("Error starting RabbitMQ consumer: %v", err)
 	}
+	defer consumer.Close()
 
-	rabbitmq.RabbitMQ(cfg.RabbitMQ.Queue, db)
+	// create a channel to listen for interrupt signals
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+
+	// run the consumer in a separate goroutine
+	go func() {
+		rmq.RunConsumer(cfg, consumer)
+	}()
+
+	// block until signal to stop is received
+	sig := <-signalChan
+	time.Sleep(1 * time.Second)
+	log.Printf("Received signal: %s, shutting down gracefully...", sig)
 }

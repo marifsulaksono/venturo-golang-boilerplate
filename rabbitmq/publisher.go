@@ -1,53 +1,44 @@
-package rabbitmq
+package rmq
 
 import (
-	"os"
-	"simple-crud-rnd/structs"
-	"time"
+	"log"
+	"simple-crud-rnd/config"
 
-	"github.com/google/uuid"
+	"github.com/streadway/amqp"
 )
 
-type RabbitMQConnection struct {
-	Host, Port, Username, Password, VirtualHost, QueueName string
+type PublishMessage struct {
+	Key     string
+	Payload string
 }
 
-// GlobalConn is a function to set global connection
-/**
- * @author Mahendra Dwi Purwanto
- *
- * @param connection *RabbitMQConnection
- *
- * @return -
- */
-func (connection *RabbitMQConnection) GlobalConn() {
-	connection.Host = os.Getenv("RQ_HOST")
-	connection.Port = os.Getenv("RQ_PORT")
-	connection.Username = os.Getenv("RQ_USERNAME")
-	connection.Password = os.Getenv("RQ_PASSWORD")
-	connection.VirtualHost = os.Getenv("RQ_VHOST")
-	connection.QueueName = os.Getenv("RQ_QUEUE")
+func createRabbitMQConnection(cfg *config.Config) (*RMQConfig, error) {
+	return NewRabbitMQConfig(cfg.RabbitMQ.Username, cfg.RabbitMQ.Password, cfg.RabbitMQ.Host, cfg.RabbitMQ.Port)
 }
 
-func RequestCommand(route string, param string, data interface{}, id string, freplay bool) (interface{}, interface{}, interface{}) {
-	connRabbitmq := RabbitMQConnection{}
-	connRabbitmq.GlobalConn()
-	return RabbitMQRPC(&connRabbitmq, structs.RabbitMQDefaultPayload{
-		JobId: id,
-		Route: route,
-		Param: param,
-		Data:  data,
-	}, freplay)
-}
+func SendMessage(cfg *config.Config, pm *PublishMessage) error {
+	c, err := createRabbitMQConnection(cfg)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
 
-func SendRabbitMQ(conn RabbitMQConnection, route string, param string, data interface{}, freplay bool) (interface{}, interface{}, interface{}) {
-	return RabbitMQRPC(&conn, structs.MessagePayload{
-		Id:         time.Now().UnixMicro(),
-		Command:    route,
-		Time:       time.Now().String(),
-		ModuleId:   "pus-be-religious-manager",
-		Properties: nil,
-		Signature:  uuid.New().String(),
-		Data:       data,
-	}, freplay)
+	err = c.Channel.Publish(
+		"",
+		cfg.RabbitMQ.Queue,
+		false,
+		false,
+		amqp.Publishing{
+			ContentType: "text/plain",
+			Body:        []byte(pm.Payload),
+			Expiration:  "60000",
+			MessageId:   pm.Key,
+		},
+	)
+	if err != nil {
+		log.Printf("Error publish message: %v", err)
+	}
+	log.Printf("Message sent to queue %s: %s\n", cfg.RabbitMQ.Queue, pm.Payload)
+
+	return nil
 }
