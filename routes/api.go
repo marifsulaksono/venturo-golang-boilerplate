@@ -53,6 +53,7 @@ func (s *HTTPServer) RunHTTPServer() {
 	api := InitVersionOne(s.httpServer, s.db, s.cfg)
 
 	s.httpServer.Static(api.cfg.HTTP.AssetEndpoint, api.cfg.AssetStorage.Path)
+	api.Common()
 	api.UserAndAuth()
 	api.Role()
 	api.Job()

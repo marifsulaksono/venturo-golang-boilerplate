@@ -6,10 +6,34 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"net/http"
 	"os"
+
+	"github.com/labstack/echo/v4"
 )
+
+func EncryptMessageControllerHelper(c echo.Context) error {
+	var request map[string]interface{}
+
+	if err := c.Bind(&request); err != nil {
+		return Response(c, http.StatusBadRequest, err, "Invalid request format")
+	}
+
+	stringRequest, err := json.Marshal(request)
+	if err != nil {
+		return Response(c, http.StatusInternalServerError, err, "Failed to process request")
+	}
+
+	encryptedMessage, err := EncryptMessageRSA(string(stringRequest))
+	if err != nil {
+		return Response(c, http.StatusInternalServerError, err, "Encryption failed")
+	}
+
+	return Response(c, http.StatusCreated, encryptedMessage, "Message encrypted successfully")
+}
 
 func EncryptMessageRSA(plaintext string) (string, error) {
 	publicKey, err := base64.StdEncoding.DecodeString(os.Getenv("RSA_PUBLIC_KEY"))

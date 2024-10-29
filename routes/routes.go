@@ -31,6 +31,11 @@ func InitVersionOne(e *echo.Echo, db *gorm.DB, cfg *config.Config) *APIVersionOn
 	}
 }
 
+func (av *APIVersionOne) Common() {
+	role := av.api.Group("/utils")
+	role.POST("/encrypt", helpers.EncryptMessageControllerHelper)
+}
+
 func (av *APIVersionOne) UserAndAuth() {
 	authModel := models.NewAuthModel(av.db)
 	userModel := models.NewUserModel(av.db)
@@ -50,6 +55,7 @@ func (av *APIVersionOne) UserAndAuth() {
 	auth.POST("/logout", authController.Logout)
 
 	user := av.api.Group("/users")
+	user.Use(middleware.SignatureMiddleware())
 	user.GET("", userController.Index, middleware.RoleMiddleware("user.view"))
 	user.POST("", userController.Create)
 	user.GET("/:id", userController.GetById, middleware.RoleMiddleware("user.view"))
