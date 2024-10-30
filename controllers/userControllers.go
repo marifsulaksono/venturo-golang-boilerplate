@@ -16,11 +16,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
 type UserController struct {
 	db          *gorm.DB
+	rds         *redis.Client
 	model       *models.UserModel
 	jobModel    *models.JobModel
 	cfg         *config.Config
@@ -28,8 +30,8 @@ type UserController struct {
 	assetPath   string
 }
 
-func NewUserController(db *gorm.DB, model *models.UserModel, jobModel *models.JobModel, cfg *config.Config, imageHelper *helpers.ImageHelper, assetPath string) *UserController {
-	return &UserController{db, model, jobModel, cfg, imageHelper, assetPath}
+func NewUserController(db *gorm.DB, rds *redis.Client, model *models.UserModel, jobModel *models.JobModel, cfg *config.Config, imageHelper *helpers.ImageHelper, assetPath string) *UserController {
+	return &UserController{db, rds, model, jobModel, cfg, imageHelper, assetPath}
 }
 
 func (uh *UserController) Index(c echo.Context) error {
@@ -58,9 +60,23 @@ func (uh *UserController) GetById(c echo.Context) error {
 	var ctx = c.Request().Context()
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		return err
+		return helpers.Response(c, http.StatusBadRequest, nil, "Invalid user ID")
 	}
 
+	userKey := fmt.Sprintf("user_%v", id)
+	cachedData, err := uh.rds.Get(ctx, userKey).Result()
+	if err == nil {
+		var data structs.User
+		if err := json.Unmarshal([]byte(cachedData), &data); err == nil {
+			return helpers.Response(c, http.StatusOK, data, "")
+		} else {
+			log.Printf("Error unmarshaling user data from Redis for user ID %v: %v", id, err)
+		}
+	} else if err != redis.Nil {
+		log.Printf("Error fetching user data from Redis for user ID %v: %v", id, err)
+	}
+
+	// If data is not found in Redis, fetch from the database
 	data, err := uh.model.GetById(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -68,6 +84,13 @@ func (uh *UserController) GetById(c echo.Context) error {
 		}
 		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
 	}
+
+	// set data user to redis
+	rdsErr := helpers.SetRedisJSONCache(ctx, uh.rds, fmt.Sprintf("user_%v", data.ID), data, time.Duration(uh.cfg.Redis.TTL)*time.Second)
+	if rdsErr != nil {
+		log.Printf("Error setting user data in Redis for user ID %v: %v", data.ID, rdsErr)
+	}
+
 	return helpers.Response(c, http.StatusOK, data, "")
 }
 
@@ -96,6 +119,11 @@ func (uh *UserController) Create(c echo.Context) error {
 	data, err := uh.model.Create(ctx, &request)
 	if err != nil {
 		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
+	rdsErr := helpers.SetRedisJSONCache(ctx, uh.rds, fmt.Sprintf("user_%v", data.ID), data, time.Duration(uh.cfg.Redis.TTL)*time.Second)
+	if rdsErr != nil {
+		log.Printf("Error setting user data in Redis for user ID %v: %v", data.ID, rdsErr)
 	}
 
 	return helpers.Response(c, http.StatusCreated, data, "Berhasil simpan user")
@@ -127,6 +155,11 @@ func (uh *UserController) Update(c echo.Context) error {
 		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
 	}
 
+	rdsErr := helpers.SetRedisJSONCache(ctx, uh.rds, fmt.Sprintf("user_%v", data.ID), data, time.Duration(uh.cfg.Redis.TTL)*time.Second)
+	if rdsErr != nil {
+		log.Printf("Error setting user data in Redis for user ID %v: %v", data.ID, rdsErr)
+	}
+
 	return helpers.Response(c, http.StatusOK, data, "Berhasil update user")
 }
 
@@ -141,6 +174,11 @@ func (uh *UserController) Delete(c echo.Context) error {
 			return helpers.Response(c, http.StatusNotFound, nil, "Data tidak ditemukan, gagal menghapus")
 		}
 		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
+	rdsErr := uh.rds.Del(ctx, fmt.Sprintf("user_%v", id)).Err()
+	if rdsErr != nil {
+		log.Printf("Error deleting user data in Redis for user ID %v: %v", id, rdsErr)
 	}
 
 	return helpers.Response(c, http.StatusOK, true, "Berhasil hapus user")

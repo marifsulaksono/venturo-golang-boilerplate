@@ -11,21 +11,24 @@ import (
 
 	"github.com/go-playground/validator"
 	"github.com/labstack/echo/v4"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
 type HTTPServer struct {
 	db         *gorm.DB
+	rds        *redis.Client
 	cfg        *config.Config
 	httpServer *echo.Echo
 }
 
-func NewHTTPServer(cfg *config.Config, db *gorm.DB) HTTPServer {
+func NewHTTPServer(cfg *config.Config, db *gorm.DB, rds *redis.Client) HTTPServer {
 	e := echo.New()
 	e.Validator = helpers.NewValidator(validator.New())
 
 	return HTTPServer{
 		db:         db,
+		rds:        rds,
 		cfg:        cfg,
 		httpServer: e,
 	}
@@ -50,7 +53,7 @@ func testPort(port int) (int, error) {
 }
 
 func (s *HTTPServer) RunHTTPServer() {
-	api := InitVersionOne(s.httpServer, s.db, s.cfg)
+	api := InitVersionOne(s.httpServer, s.db, s.rds, s.cfg)
 
 	s.httpServer.Static(api.cfg.HTTP.AssetEndpoint, api.cfg.AssetStorage.Path)
 	api.Common()

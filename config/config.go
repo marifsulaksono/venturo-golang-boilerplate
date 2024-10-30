@@ -19,6 +19,7 @@ type (
 		JWT          JWT
 		AssetStorage AssetStorage
 		RabbitMQ     RabbitMQConf
+		Redis        Redis
 	}
 	Database struct {
 		Username string
@@ -47,6 +48,12 @@ type (
 		Port     string
 		Vhost    string
 		Queue    string
+	}
+	Redis struct {
+		Host     string
+		Port     string
+		Password string
+		TTL      int
 	}
 )
 
@@ -87,6 +94,15 @@ func LoadConfig() (*Config, error) {
 	rmqVhost, _ := configDefaults("RQ_VHOST", "/")
 	rmqQueue, _ := configDefaults("RQ_QUEUE", "my_queue")
 
+	redisHost, _ := configDefaults("RDS_HOST", "127.0.0.1")
+	redisPort, _ := configDefaults("RDS_PORT", "6379")
+	redisPass, _ := configDefaults("RDS_PASSWORD", "")
+	redisTTL, _ := configDefaults("RDS_TTL_IN_SEC", "60")
+	intRedisTTL, err := strconv.Atoi(redisTTL)
+	if err != nil {
+		log.Fatal("Port must be a number")
+	}
+
 	var cfg Config = Config{
 		Database: Database{
 			Username: dbUsername,
@@ -115,6 +131,12 @@ func LoadConfig() (*Config, error) {
 			Port:     rmqPort,
 			Vhost:    rmqVhost,
 			Queue:    rmqQueue,
+		},
+		Redis: Redis{
+			Host:     redisHost,
+			Port:     redisPort,
+			Password: redisPass,
+			TTL:      intRedisTTL,
 		},
 	}
 

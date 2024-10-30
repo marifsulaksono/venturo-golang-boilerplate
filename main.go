@@ -1,32 +1,28 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"simple-crud-rnd/config"
-	"simple-crud-rnd/helpers"
 	"simple-crud-rnd/routes"
 )
 
 func main() {
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalln("Error loading configs")
+		log.Fatalln("Error loading configs:", err)
 	}
 
 	db, err := config.InitDatabase(cfg)
 	if err != nil {
-		log.Fatalln("Error opening database")
+		log.Fatalln("Error connect database:", err)
 	}
 
-	id := "c1daac6e-47fc-4200-a0e9-58832e8c5de0"
-	str, err := helpers.EncryptMessageRSA(id)
+	rds, err := config.InitRedisClient(cfg)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatalln("Error opening database:", err)
 	}
-	fmt.Println(str)
 
-	e := routes.NewHTTPServer(cfg, db)
+	e := routes.NewHTTPServer(cfg, db, rds)
 	e.RunHTTPServer()
 }

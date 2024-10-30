@@ -10,21 +10,24 @@ import (
 	"simple-crud-rnd/models"
 
 	"github.com/labstack/echo/v4"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
 type APIVersionOne struct {
 	e          *echo.Echo
 	db         *gorm.DB
+	rds        *redis.Client
 	cfg        *config.Config
 	api        *echo.Group
 	assetsPath string
 }
 
-func InitVersionOne(e *echo.Echo, db *gorm.DB, cfg *config.Config) *APIVersionOne {
+func InitVersionOne(e *echo.Echo, db *gorm.DB, rds *redis.Client, cfg *config.Config) *APIVersionOne {
 	return &APIVersionOne{
 		e,
 		db,
+		rds,
 		cfg,
 		e.Group("/api/v1"),
 		fmt.Sprintf("%s/%s", cfg.HTTP.Domain, cfg.HTTP.AssetEndpoint),
@@ -46,7 +49,7 @@ func (av *APIVersionOne) UserAndAuth() {
 	}
 
 	authController := controllers.NewAuthController(av.db, authModel, userModel, jobModel, av.cfg)
-	userController := controllers.NewUserController(av.db, userModel, jobModel, av.cfg, imageHelper, av.assetsPath)
+	userController := controllers.NewUserController(av.db, av.rds, userModel, jobModel, av.cfg, imageHelper, av.assetsPath)
 
 	auth := av.api.Group("/auth")
 	auth.POST("/login", authController.Login)
