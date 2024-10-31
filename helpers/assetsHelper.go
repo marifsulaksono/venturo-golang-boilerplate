@@ -36,22 +36,22 @@ func (img *ImageHelper) Writer(imageString string, filename string) (string, err
 	// Decode the Base64 string
 	dec, err := base64.StdEncoding.DecodeString(imageString)
 	if err != nil {
-		return "", err
+		return "", SendTraceErrorToSentry(err)
 	}
 
 	// Create the file
 	f, err := os.Create(fmt.Sprintf("%s/%s", img.fullPath, filename))
 	if err != nil {
-		return "", err
+		return "", SendTraceErrorToSentry(err)
 	}
 	defer f.Close()
 
 	// Write the decoded data to the file
 	if _, err := f.Write(dec); err != nil {
-		return "", err
+		return "", SendTraceErrorToSentry(err)
 	}
 	if err := f.Sync(); err != nil {
-		return "", err
+		return "", SendTraceErrorToSentry(err)
 	}
 
 	// Return the file path
@@ -62,14 +62,14 @@ func (img *ImageHelper) Read(filepath string) (string, error) {
 	// Open the file
 	f, err := os.Open(filepath)
 	if err != nil {
-		return "", err
+		return "", SendTraceErrorToSentry(err)
 	}
 	defer f.Close()
 
 	// Read the file contents
 	fileInfo, err := f.Stat()
 	if err != nil {
-		return "", err
+		return "", SendTraceErrorToSentry(err)
 	}
 
 	fileSize := fileInfo.Size()
@@ -77,7 +77,7 @@ func (img *ImageHelper) Read(filepath string) (string, error) {
 
 	_, err = f.Read(fileBytes)
 	if err != nil {
-		return "", err
+		return "", SendTraceErrorToSentry(err)
 	}
 
 	// Convert the file content to Base64 string

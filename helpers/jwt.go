@@ -39,7 +39,7 @@ func GenerateTokenJWT(user *structs.User, isRefresh bool) (string, *time.Time, e
 	// Declare the token with the HS256 algorithm used for signing, and the claims.
 	tokenString, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(secretKey))
 	if err != nil {
-		return "", nil, err
+		return "", nil, SendTraceErrorToSentry(err)
 	}
 
 	return tokenString, &expiredAt, nil
@@ -61,7 +61,7 @@ func VerifyTokenJWT(tokenString string, isRefresh bool) (*structs.User, error) {
 		return []byte(secretKey), nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, SendTraceErrorToSentry(err)
 	}
 
 	// extract user claims if the token is valid

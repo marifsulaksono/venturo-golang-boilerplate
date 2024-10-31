@@ -15,6 +15,7 @@ import (
 type (
 	Config struct {
 		Database     Database
+		Sentry       Sentry
 		HTTP         HTTP
 		JWT          JWT
 		AssetStorage AssetStorage
@@ -25,6 +26,9 @@ type (
 		Host     string
 		Port     string
 		Name     string
+	}
+	Sentry struct {
+		Dsn string
 	}
 	HTTP struct {
 		Host          string
@@ -54,6 +58,8 @@ func LoadConfig() (*Config, error) {
 	dbPort, _ := configDefaults("DB_PORT", "3306")
 	dbName, _ := configDefaults("DB_NAME", "mysql")
 
+	sentryDsn, _ := configDefaults("SENTRY_DSN", "")
+
 	listenHost, _ := configDefaults("LISTEN_HOST", "127.0.0.1")
 	listenPort, _ := configDefaults("LISTEN_PORT", "8080")
 	intListenPort, err := strconv.Atoi(listenPort)
@@ -63,6 +69,7 @@ func LoadConfig() (*Config, error) {
 	domain, _ := configDefaults("DOMAIN", "http://localhost")
 	assetPath, _ := configDefaults("ASSET_PATH", "api/v1/assets")
 	jwtSecret, _ := configDefaults("JWT_SECRET", "")
+
 	config := echojwt.Config{
 		NewClaimsFunc: func(c echo.Context) jwt.Claims {
 			return new(structs.JWTUser)
@@ -78,6 +85,9 @@ func LoadConfig() (*Config, error) {
 			Host:     dbHost,
 			Port:     dbPort,
 			Name:     dbName,
+		},
+		Sentry: Sentry{
+			Dsn: sentryDsn,
 		},
 		HTTP: HTTP{
 			Host:          listenHost,

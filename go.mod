@@ -3,6 +3,7 @@ module simple-crud-rnd
 go 1.23.0
 
 require (
+	github.com/getsentry/sentry-go v0.29.1
 	github.com/go-playground/validator v9.31.0+incompatible
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0

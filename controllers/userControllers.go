@@ -55,7 +55,7 @@ func (uh *UserController) GetById(c echo.Context) error {
 	var ctx = c.Request().Context()
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		return err
+		return helpers.SendTraceErrorToSentry(err)
 	}
 
 	data, err := uh.model.GetById(ctx, id)

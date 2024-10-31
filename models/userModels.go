@@ -26,12 +26,12 @@ func (um *UserModel) GetAll(ctx context.Context, limit, offset int) ([]structs.U
 	users := []structs.User{}
 	if err := um.db.Select("id", "name", "email", "phone_number", "photo", "user_roles_id", "updated_security", "created_at", "updated_at").
 		Limit(limit).Offset(offset).Find(&users).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, helpers.SendTraceErrorToSentry(err)
 	}
 
 	var count int64
 	if err := um.db.Table("m_user").Where("deleted_at IS NULL").Count(&count).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, helpers.SendTraceErrorToSentry(err)
 	}
 
 	return users, count, nil
@@ -41,20 +41,20 @@ func (um *UserModel) GetById(ctx context.Context, id uuid.UUID) (structs.User, e
 	user := structs.User{}
 	err := um.db.Select("id", "name", "email", "phone_number", "photo", "user_roles_id", "updated_security", "created_at", "updated_at").
 		Where("deleted_at IS NULL").First(&user, id).Error
-	return user, err
+	return user, helpers.SendTraceErrorToSentry(err)
 }
 
 func (um *UserModel) GetByEmail(ctx context.Context, email string) (structs.User, error) {
 	user := structs.User{}
 	err := um.db.Preload("Role").Where("email = ? AND deleted_at IS NULL", email).First(&user).Error
-	return user, err
+	return user, helpers.SendTraceErrorToSentry(err)
 }
 
 func (um *UserModel) Create(ctx context.Context, payload *structs.UserRequest) (structs.User, error) {
 	var user structs.User
 	hashedPassword, pwErr := helpers.PasswordHash(payload.Password)
 	if pwErr != nil {
-		return user, pwErr
+		return user, helpers.SendTraceErrorToSentry(pwErr)
 	}
 	user = structs.User{
 		Name:            payload.Name,
@@ -78,7 +78,7 @@ func (um *UserModel) Create(ctx context.Context, payload *structs.UserRequest) (
 	})
 
 	if res.Error != nil {
-		return user, res.Error
+		return user, helpers.SendTraceErrorToSentry(res.Error)
 	}
 
 	return user, nil
@@ -88,12 +88,12 @@ func (um *UserModel) Update(ctx context.Context, payload *structs.User) (structs
 	user := structs.User{ID: payload.ID}
 	hashedPassword, pwErr := helpers.PasswordHash(payload.Password)
 	if pwErr != nil {
-		return user, pwErr
+		return user, helpers.SendTraceErrorToSentry(pwErr)
 	}
 	payload.Password = hashedPassword
 	res := um.db.Model(&user).Clauses(clause.Returning{}).Updates(&payload)
 	if res.RowsAffected == 0 {
-		return user, errors.New("no rows updated")
+		return user, helpers.SendTraceErrorToSentry(errors.New("no rows updated"))
 	}
 	return user, nil
 }
@@ -101,7 +101,7 @@ func (um *UserModel) Update(ctx context.Context, payload *structs.User) (structs
 func (um *UserModel) Delete(ctx context.Context, id uuid.UUID) error {
 	res := um.db.Delete(&structs.User{}, id)
 	if res.RowsAffected == 0 {
-		return errors.New("no rows deleted")
+		return helpers.SendTraceErrorToSentry(errors.New("no rows deleted"))
 	}
 	return nil
 }
