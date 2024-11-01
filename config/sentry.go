@@ -21,7 +21,6 @@ func InitSentry(cfg *Config) error {
 		return err
 	}
 
-	// sentry.CaptureMessage("It works!")
 	return nil
 }
 
