@@ -11,9 +11,11 @@ require (
 	github.com/labstack/echo/v4 v4.12.0
 	github.com/redis/go-redis/v9 v9.7.0
 	github.com/sendgrid/sendgrid-go v3.16.0+incompatible
+	github.com/sirupsen/logrus v1.9.3
 	github.com/streadway/amqp v1.1.0
 	golang.org/x/crypto v0.28.0
 	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gorm.io/driver/mysql v1.5.7
 	gorm.io/gorm v1.25.12
 )
