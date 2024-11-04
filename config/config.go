@@ -20,6 +20,7 @@ type (
 		AssetStorage AssetStorage
 		RabbitMQ     RabbitMQConf
 		Redis        Redis
+		MongoDB      MongoDB
 	}
 	Database struct {
 		Username string
@@ -54,6 +55,11 @@ type (
 		Port     string
 		Password string
 		TTL      int
+	}
+	MongoDB struct {
+		Username string
+		Password string
+		Cluster  string
 	}
 )
 
@@ -103,6 +109,10 @@ func LoadConfig() (*Config, error) {
 		log.Fatal("Port must be a number")
 	}
 
+	mongoUser, _ := configDefaults("MONGODB_USER", "user")
+	mongoPass, _ := configDefaults("MONGODB_PASS", "user")
+	mongoCluster, _ := configDefaults("MONGODB_CLUSTER", "cluster0")
+
 	var cfg Config = Config{
 		Database: Database{
 			Username: dbUsername,
@@ -137,6 +147,11 @@ func LoadConfig() (*Config, error) {
 			Port:     redisPort,
 			Password: redisPass,
 			TTL:      intRedisTTL,
+		},
+		MongoDB: MongoDB{
+			Username: mongoUser,
+			Password: mongoPass,
+			Cluster:  mongoCluster,
 		},
 	}
 

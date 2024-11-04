@@ -20,7 +20,12 @@ func main() {
 
 	rds, err := config.InitRedisClient(cfg)
 	if err != nil {
-		log.Fatalln("Error opening database:", err)
+		log.Fatalln("Error connect redis:", err)
+	}
+
+	_, err = config.InitMongoDB(cfg)
+	if err != nil {
+		log.Fatalln("Error connect mongodb:", err)
 	}
 
 	e := routes.NewHTTPServer(cfg, db, rds)

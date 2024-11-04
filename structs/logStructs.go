@@ -5,5 +5,6 @@ type LogEntry struct {
 	Path     string      `json:"path"`
 	IP       string      `json:"ip"`
 	User     interface{} `json:"user"`
+	Body     interface{} `json:"body"`
 	Response interface{} `json:"response"`
 }
