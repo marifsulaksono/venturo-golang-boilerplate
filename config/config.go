@@ -19,6 +19,7 @@ type (
 		HTTP         HTTP
 		JWT          JWT
 		AssetStorage AssetStorage
+		MongoDB      MongoDB
 	}
 	Database struct {
 		Username string
@@ -42,6 +43,11 @@ type (
 	}
 	AssetStorage struct {
 		Path string
+	}
+	MongoDB struct {
+		Username string
+		Password string
+		Cluster  string
 	}
 )
 
@@ -78,6 +84,10 @@ func LoadConfig() (*Config, error) {
 	}
 	storagePath, _ := configDefaults("ASSET_PATH", "./")
 
+	mongoUser, _ := configDefaults("MONGODB_USER", "user")
+	mongoPass, _ := configDefaults("MONGODB_PASS", "user")
+	mongoCluster, _ := configDefaults("MONGODB_CLUSTER", "cluster0")
+
 	var cfg Config = Config{
 		Database: Database{
 			Username: dbUsername,
@@ -101,6 +111,11 @@ func LoadConfig() (*Config, error) {
 		},
 		AssetStorage: AssetStorage{
 			Path: storagePath,
+		},
+		MongoDB: MongoDB{
+			Username: mongoUser,
+			Password: mongoPass,
+			Cluster:  mongoCluster,
 		},
 	}
 

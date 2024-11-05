@@ -21,9 +21,13 @@ func main() {
 		log.Fatalln("Error opening database:", err)
 	}
 
-	err = config.InitSentry(cfg)
-	if err != nil {
+	if err := config.InitSentry(cfg); err != nil {
 		log.Fatalln("Error initialize sentry:", err)
+	}
+
+	_, err = config.InitMongoDB(cfg)
+	if err != nil {
+		log.Fatalln("Error connect mongodb:", err)
 	}
 
 	e := routes.NewHTTPServer(cfg, db)

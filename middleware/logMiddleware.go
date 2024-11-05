@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"simple-crud-rnd/helpers"
 	"simple-crud-rnd/structs"
@@ -51,6 +52,7 @@ func LogMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 		user := c.Get("user")
 		entry := structs.LogEntry{
+			Datetime: time.Now(),
 			URL:      c.Request().URL.String(),
 			Method:   c.Request().Method,
 			IP:       c.Request().RemoteAddr,
@@ -62,6 +64,10 @@ func LogMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		logger.WithFields(logrus.Fields{
 			"log": entry,
 		}).Info("Request log")
+
+		if err := helpers.InsertLogDataToMongoDB(c.Request().Context(), "db_test", "logs", &entry); err != nil {
+			log.Printf("Error inserting log to MongoDB: %v", err)
+		}
 
 		return err
 	}
