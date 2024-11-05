@@ -10,17 +10,17 @@ import (
 	"golang.org/x/time/rate"
 )
 
-var leakyBuckets = make(map[string]*rate.Limiter)
-var leakyMu sync.Mutex
+var buckets = make(map[string]*rate.Limiter)
+var mu sync.Mutex
 
 func getBucketLimiter(ip string, limit, durationInSec int) *rate.Limiter {
-	leakyMu.Lock()
-	defer leakyMu.Unlock()
+	mu.Lock()
+	defer mu.Unlock()
 
-	limiter, exists := leakyBuckets[ip]
+	limiter, exists := buckets[ip]
 	if !exists {
 		limiter = rate.NewLimiter(rate.Every(time.Duration(durationInSec)*time.Second), limit)
-		leakyBuckets[ip] = limiter
+		buckets[ip] = limiter
 	}
 
 	return limiter
