@@ -45,9 +45,12 @@ type (
 		Path string
 	}
 	MongoDB struct {
+		Host     string
+		Port     string
 		Username string
 		Password string
 		Cluster  string
+		Name     string
 	}
 )
 
@@ -84,9 +87,12 @@ func LoadConfig() (*Config, error) {
 	}
 	storagePath, _ := configDefaults("ASSET_PATH", "./")
 
+	mongoHost, _ := configDefaults("MONGODB_HOST", "127.0.0.1")
+	mongoPort, _ := configDefaults("MONGODB_PORT", "27017")
 	mongoUser, _ := configDefaults("MONGODB_USER", "user")
 	mongoPass, _ := configDefaults("MONGODB_PASS", "user")
 	mongoCluster, _ := configDefaults("MONGODB_CLUSTER", "cluster0")
+	mongoName, _ := configDefaults("MONGODB_NAME", "db_boilerplate")
 
 	var cfg Config = Config{
 		Database: Database{
@@ -113,9 +119,12 @@ func LoadConfig() (*Config, error) {
 			Path: storagePath,
 		},
 		MongoDB: MongoDB{
+			Host:     mongoHost,
+			Port:     mongoPort,
 			Username: mongoUser,
 			Password: mongoPass,
 			Cluster:  mongoCluster,
+			Name:     mongoName,
 		},
 	}
 

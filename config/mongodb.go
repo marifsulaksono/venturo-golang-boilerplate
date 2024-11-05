@@ -34,3 +34,30 @@ func InitMongoDB(cfg *Config) (*mongo.Client, error) {
 	log.Println("Succees to connect to mongodb")
 	return db, nil
 }
+
+// using mongodb shell (local)
+func InitLocalMongoDB(cfg *Config) (*mongo.Client, error) {
+	url := fmt.Sprintf("mongodb://%s:%s", cfg.MongoDB.Host, cfg.MongoDB.Port)
+	opts := options.Client().ApplyURI(url)
+	opts.SetAuth(options.Credential{
+		AuthSource: cfg.MongoDB.Name,
+		Username:   cfg.MongoDB.Username,
+		Password:   cfg.MongoDB.Password,
+	})
+
+	// connect to MongoDB
+	db, err := mongo.Connect(context.TODO(), opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
+	}
+
+	// test MongoDB connection
+	if err := db.Ping(context.TODO(), nil); err != nil {
+		return nil, fmt.Errorf("failed to ping MongoDB: %w", err)
+	}
+
+	MongoCLI = db
+
+	log.Println("Successfully connected to MongoDB")
+	return db, nil
+}

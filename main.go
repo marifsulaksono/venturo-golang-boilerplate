@@ -25,7 +25,7 @@ func main() {
 		log.Fatalln("Error initialize sentry:", err)
 	}
 
-	_, err = config.InitMongoDB(cfg)
+	_, err = config.InitLocalMongoDB(cfg)
 	if err != nil {
 		log.Fatalln("Error connect mongodb:", err)
 	}
