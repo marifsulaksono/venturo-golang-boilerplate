@@ -55,7 +55,7 @@ func LogMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			Datetime: time.Now(),
 			URL:      c.Request().URL.String(),
 			Method:   c.Request().Method,
-			IP:       c.Request().RemoteAddr,
+			IP:       c.RealIP(),
 			User:     user,
 			Body:     payload,
 			Response: response,
@@ -65,6 +65,7 @@ func LogMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			"log": entry,
 		}).Info("Request log")
 
+		// insert log to MongoDB
 		if err := helpers.InsertLogDataToMongoDB(c.Request().Context(), "db_test", "logs", &entry); err != nil {
 			log.Printf("Error inserting log to MongoDB: %v", err)
 		}
