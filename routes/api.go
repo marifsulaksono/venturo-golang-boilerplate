@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"simple-crud-rnd/config"
 	"simple-crud-rnd/helpers"
+	"simple-crud-rnd/middleware"
 
 	"github.com/go-playground/validator"
 	"github.com/labstack/echo/v4"
@@ -22,6 +23,7 @@ type HTTPServer struct {
 
 func NewHTTPServer(cfg *config.Config, db *gorm.DB) HTTPServer {
 	e := echo.New()
+	e.Use(middleware.LogMiddleware)
 	e.Validator = helpers.NewValidator(validator.New())
 
 	return HTTPServer{
