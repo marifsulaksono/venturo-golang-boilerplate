@@ -50,8 +50,8 @@ func LogMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		user := c.Get("user")
 		entry := structs.LogEntry{
 			URL:      c.Request().URL.String(),
-			Path:     c.Request().Method,
-			IP:       c.RealIP(),
+			Method:   c.Request().Method,
+			IP:       c.Request().RemoteAddr,
 			User:     user,
 			Body:     payload,
 			Response: response,

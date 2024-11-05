@@ -2,7 +2,7 @@ package structs
 
 type LogEntry struct {
 	URL      string      `json:"url"`
-	Path     string      `json:"path"`
+	Method   string      `json:"method"`
 	IP       string      `json:"ip"`
 	User     interface{} `json:"user"`
 	Body     interface{} `json:"body"`
