@@ -43,7 +43,7 @@ func (av *APIVersionOne) UserAndAuth() {
 	userController := controllers.NewUserController(av.db, userModel, av.cfg, imageHelper, av.assetsPath)
 
 	auth := av.api.Group("/auth")
-	auth.POST("/login", authController.Login)
+	auth.POST("/login", authController.Login, middleware.RateLimitMiddleware(2, 60)) // limit 2 request for 1 minute
 	auth.POST("/refresh", authController.RefreshAccessToken)
 	auth.POST("/logout", authController.Logout)
 

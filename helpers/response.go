@@ -21,6 +21,8 @@ func getMessage(status int) string {
 		return "Forbidden"
 	case http.StatusNotFound:
 		return "Not Found"
+	case http.StatusTooManyRequests:
+		return "Too many requests"
 	case http.StatusInternalServerError:
 		return "Internal Server Error"
 	default:
