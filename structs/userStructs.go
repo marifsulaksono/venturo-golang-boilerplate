@@ -35,7 +35,7 @@ type (
 		Email           string    `json:"email" validate:"required,email"`
 		Photo           string    `json:"photo_url,omitempty"`
 		PhoneNumber     string    `json:"phone_number" validate:"required,e164"`
-		Password        string    `json:"password" validate:"required"`
+		Password        string    `json:"password" validate:"required,weakpassword"`
 		UserRolesId     string    `json:"user_roles_id" validate:"required,uuid"`
 		UpdatedSecurity time.Time `json:"updated_security"`
 	}
