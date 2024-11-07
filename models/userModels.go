@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"errors"
+	"log"
 	"simple-crud-rnd/helpers"
 	"simple-crud-rnd/structs"
 	"time"
@@ -99,9 +100,21 @@ func (um *UserModel) Update(ctx context.Context, payload *structs.User) (structs
 }
 
 func (um *UserModel) Delete(ctx context.Context, id uuid.UUID) error {
+	user, err := um.GetById(ctx, id)
+	if err != nil {
+		return helpers.SendTraceErrorToSentry(err)
+	}
+
 	res := um.db.Delete(&structs.User{}, id)
 	if res.RowsAffected == 0 {
 		return helpers.SendTraceErrorToSentry(errors.New("no rows deleted"))
+	}
+
+	if user.Photo != "" {
+		err = helpers.MoveToTrash(user.Photo)
+		if err != nil {
+			log.Printf("Failed to move file %s to trash: %s", user.Photo, err)
+		}
 	}
 	return nil
 }

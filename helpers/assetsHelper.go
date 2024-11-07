@@ -4,7 +4,9 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+	"time"
 )
 
 type (
@@ -85,4 +87,73 @@ func (img *ImageHelper) Read(filepath string) (string, error) {
 
 	// return the MIME type prefix for image format
 	return fmt.Sprintf("data:image/png;base64,%s", encodedString), nil
+}
+
+func MoveToTrash(imagePath string) error {
+	fmt.Println("imagePath:", imagePath)
+	// Tentukan path folder trash
+	trashFolder := "./assets/trash/"
+	// Dapatkan nama file
+	fileName := filepath.Base(imagePath)
+	// Tentukan path baru untuk file di folder trash
+	destination := filepath.Join(trashFolder, fileName)
+
+	// Cek apakah folder trash ada, jika belum buat
+	if _, err := os.Stat(trashFolder); os.IsNotExist(err) {
+		if err := os.MkdirAll(trashFolder, os.ModePerm); err != nil {
+			return err
+		}
+	}
+
+	// Pindahkan file ke folder trash
+	if err := os.Rename(imagePath, destination); err != nil {
+		return err
+	}
+	return nil
+}
+
+// CleanUpTrash menghapus file yang sudah ada di folder trash selama lebih dari 1 bulan
+func CleanUpTrash() error {
+	trashFolder := "./assets/trash/"
+
+	// Check if the trash folder exists
+	if _, err := os.Stat(trashFolder); os.IsNotExist(err) {
+		fmt.Println("Trash folder does not exist.")
+		return nil
+	}
+
+	// Read the files in the trash folder
+	files, err := os.ReadDir(trashFolder)
+	if err != nil {
+		return err
+	}
+
+	// Set the threshold to 1 minute ago for testing (use -1 month for production)
+	thresholdTime := time.Now().Add(-1 * time.Minute)
+
+	// Loop through each file and check modification time
+	for _, file := range files {
+		filePath := filepath.Join(trashFolder, file.Name())
+		info, err := file.Info()
+		if err != nil {
+			return err
+		}
+
+		// Print file info for debugging
+		fmt.Printf("Checking file: %s, ModTime: %s\n", file.Name(), info.ModTime())
+
+		// Check if the file modification time is before the threshold
+		if info.ModTime().Before(thresholdTime) {
+			// Attempt to delete the file
+			if err := os.Remove(filePath); err != nil {
+				fmt.Printf("Failed to delete file %s: %v\n", filePath, err)
+			} else {
+				fmt.Printf("Deleted file: %s\n", file.Name())
+			}
+		} else {
+			fmt.Printf("File %s is not old enough to be deleted.\n", file.Name())
+		}
+	}
+
+	return nil
 }

@@ -112,6 +112,14 @@ func (uh *UserController) Update(c echo.Context) error {
 		return helpers.Response(c, http.StatusBadRequest, nil, err.Error())
 	}
 
+	user, err := uh.model.GetById(ctx, request.ID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return helpers.Response(c, http.StatusNotFound, nil, "Data tidak ditemukan")
+		}
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
 	if request.Photo != "" {
 		photo_url, err := uh.imageHelper.Writer(request.Photo, fmt.Sprintf("%s.png", time.Now().Format("20061021545.000000000")))
 		if err != nil {
@@ -119,9 +127,17 @@ func (uh *UserController) Update(c echo.Context) error {
 		}
 		request.Photo = photo_url
 	}
+
 	data, err := uh.model.Update(ctx, &request)
 	if err != nil {
 		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
+	if user.Photo != "" {
+		err = helpers.MoveToTrash(user.Photo)
+		if err != nil {
+			log.Printf("Failed to move file %s to trash: %s", user.Photo, err)
+		}
 	}
 
 	return helpers.Response(c, http.StatusOK, data, "Berhasil update user")
