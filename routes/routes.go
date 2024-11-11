@@ -47,6 +47,9 @@ func (av *APIVersionOne) UserAndAuth() {
 	auth.POST("/refresh", authController.RefreshAccessToken)
 	auth.POST("/logout", authController.Logout)
 
+	auth.GET("/generate2fa", authController.Generate2FASecretKey, middleware.RoleMiddleware(""))
+	auth.POST("/verify2fa", authController.Verify2FA, middleware.RoleMiddleware(""))
+
 	user := av.api.Group("/users")
 	user.GET("", userController.Index, middleware.RoleMiddleware("user.view"))
 	user.POST("", userController.Create)

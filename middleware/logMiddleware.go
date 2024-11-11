@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"simple-crud-rnd/helpers"
 	"simple-crud-rnd/structs"
@@ -66,9 +65,9 @@ func LogMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		}).Info("Request log")
 
 		// insert log to MongoDB
-		if err := helpers.InsertLogDataToMongoDB(c.Request().Context(), "db_test", "logs", &entry); err != nil {
-			log.Printf("Error inserting log to MongoDB: %v", err)
-		}
+		// if err := helpers.InsertLogDataToMongoDB(c.Request().Context(), "db_test", "logs", &entry); err != nil {
+		// 	log.Printf("Error inserting log to MongoDB: %v", err)
+		// }
 
 		return err
 	}

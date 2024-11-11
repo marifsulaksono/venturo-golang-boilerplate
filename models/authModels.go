@@ -60,3 +60,14 @@ func (am *AuthModel) Delete(ctx context.Context, refreshToken, ip string) error 
 	err := am.db.Where("refresh_token = ? AND ip = ?", refreshToken, ip).Delete(&structs.TokenAuth{}).Error
 	return helpers.SendTraceErrorToSentry(err)
 }
+
+func (am *AuthModel) Get2FASecretKeyByUserID(ctx context.Context, userId string) (structs.TOTP, error) {
+	totp := structs.TOTP{}
+	err := am.db.Select("secret_key").Where("user_id = ?", userId).First(&totp).Error
+	return totp, helpers.SendTraceErrorToSentry(err)
+}
+
+func (am *AuthModel) Store2FASecretKey(ctx context.Context, payload *structs.TOTP) error {
+	err := am.db.Save(payload).Error
+	return helpers.SendTraceErrorToSentry(err)
+}

@@ -8,6 +8,7 @@ import (
 	"simple-crud-rnd/models"
 	"simple-crud-rnd/structs"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -151,4 +152,65 @@ func (ah *AuthController) Logout(c echo.Context) error {
 	}
 
 	return helpers.Response(c, http.StatusOK, nil, "Logout berhasil")
+}
+
+func (ah *AuthController) Generate2FASecretKey(c echo.Context) error {
+	var (
+		ctx = c.Request().Context()
+	)
+
+	userId := c.Get("user_id").(uuid.UUID)
+	if userId == uuid.Nil {
+		return helpers.Response(c, http.StatusUnauthorized, nil, "User ID not found in context")
+	}
+
+	user, err := ah.userModel.GetById(ctx, userId)
+	if err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
+	key, err := helpers.Generate2FASecretKey(ctx)
+	if err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
+	if err := ah.authModel.Store2FASecretKey(ctx, &structs.TOTP{UserID: user.ID.String(), SecretKey: key}); err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
+	qrUrl := helpers.Generate2FAQRCodeURL(user.ID.String(), key)
+	return helpers.Response(c, http.StatusOK, map[string]string{"qrcode_url": qrUrl}, "Berhasil")
+}
+
+func (ah *AuthController) Verify2FA(c echo.Context) error {
+	var (
+		request structs.TOTPRequest
+	)
+
+	userId := c.Get("user_id").(uuid.UUID)
+	if userId == uuid.Nil {
+		return helpers.Response(c, http.StatusUnauthorized, nil, "User ID not found in context")
+	}
+
+	if err := c.Bind(&request); err != nil {
+		return helpers.Response(c, http.StatusBadRequest, nil, err.Error())
+	}
+
+	if err := c.Validate(&request); err != nil {
+		return helpers.Response(c, http.StatusBadRequest, nil, err.Error())
+	}
+
+	totp, err := ah.authModel.Get2FASecretKeyByUserID(c.Request().Context(), userId.String())
+	if err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	}
+
+	ok, err := helpers.VerifyOTP(totp.SecretKey, request.Code)
+	if err != nil {
+		return helpers.Response(c, http.StatusInternalServerError, nil, err.Error())
+	} else if !ok {
+		return helpers.Response(c, http.StatusBadRequest, nil, "Kode salah")
+	}
+
+	return helpers.Response(c, http.StatusOK, nil, "Berhasil")
 }

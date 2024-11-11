@@ -34,4 +34,16 @@ type (
 	RefreshAccessToken struct {
 		RefreshToken string `json:"refresh_token" validate:"required"`
 	}
+
+	TOTP struct {
+		UserID    string     `json:"user_id" gorm:"primaryKey;type:char(36)"`
+		SecretKey string     `json:"secret_key" gorm:"not null"`
+		CreatedAt time.Time  `json:"created_at" gorm:"autoCreateTime"`
+		UpdatedAt time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+		DeletedAt *time.Time `json:"deleted_at" gorm:"index"`
+	}
+
+	TOTPRequest struct {
+		Code string `json:"code" validate:"required"`
+	}
 )

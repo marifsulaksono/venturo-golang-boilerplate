@@ -23,7 +23,7 @@ func RoleMiddleware(requiredRoles string) echo.MiddlewareFunc {
 				return helpers.Response(c, http.StatusUnauthorized, err.Error(), "Invalid Token")
 			}
 
-			c.Set("user", user) // set saves data in the context
+			c.Set("user_id", user.ID) // set saves data in the context
 
 			// check if user permissions
 			if requiredRoles == "" {
