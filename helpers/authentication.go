@@ -1,6 +1,9 @@
 package helpers
 
 import (
+	"context"
+	"crypto/rand"
+	"encoding/base32"
 	"fmt"
 	"net/url"
 
@@ -30,4 +33,13 @@ func VerifyOTP(secret, code string) (bool, error) {
 	}
 	verified, err := otpConfig.Authenticate(code)
 	return verified, err
+}
+
+func Generate2FASecretKey(ctx context.Context) (string, error) {
+	randomBytes := make([]byte, 10)
+	_, err := rand.Read(randomBytes)
+	if err != nil {
+		return "", err
+	}
+	return base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(randomBytes), nil
 }
