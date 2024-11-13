@@ -66,3 +66,14 @@ func (av *APIVersionOne) Role() {
 	role.PUT("", roleController.Update, middleware.RoleMiddleware("roles.update"))
 	role.DELETE("/:id", roleController.Delete, middleware.RoleMiddleware("roles.delete"))
 }
+
+func (av *APIVersionOne) Chat() {
+	manager := helpers.NewWebSocketManager()
+	go manager.Start()
+
+	// chatModel := models.NewChatModel(av.db)
+	chatController := controllers.NewChatController(av.db, av.cfg, manager)
+
+	chat := av.api.Group("/chat")
+	chat.GET("/ws", chatController.WebSocketHandler)
+}

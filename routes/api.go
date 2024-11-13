@@ -57,6 +57,7 @@ func (s *HTTPServer) RunHTTPServer() {
 	s.httpServer.Static(api.cfg.HTTP.AssetEndpoint, api.cfg.AssetStorage.Path)
 	api.UserAndAuth()
 	api.Role()
+	api.Chat()
 
 	openPort, err := testPort(s.cfg.HTTP.Port)
 	if err != nil {
