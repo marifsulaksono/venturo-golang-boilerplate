@@ -1,4 +1,4 @@
-package helpers
+package utils
 
 import (
 	"log"
@@ -56,6 +56,9 @@ func (manager *WebSocketManager) Start() {
 			}
 
 		case message := <-manager.Broadcast:
+			chatCollection := "chats"
+			InsertChatMessage(message, chatCollection)
+
 			// send messages to the recipient (personal chat for now)
 			for clientID, conn := range manager.Clients {
 				if strings.EqualFold(clientID, message.Receiver) {

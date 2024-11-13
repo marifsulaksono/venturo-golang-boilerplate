@@ -25,12 +25,12 @@ func main() {
 		log.Fatalln("Error initialize sentry:", err)
 	}
 
-	_, err = config.InitLocalMongoDB(cfg)
+	mongo, err := config.InitLocalMongoDB(cfg)
 	if err != nil {
 		log.Fatalln("Error connect mongodb:", err)
 	}
 
-	e := routes.NewHTTPServer(cfg, db)
+	e := routes.NewHTTPServer(cfg, db, mongo)
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGTERM, syscall.SIGINT)

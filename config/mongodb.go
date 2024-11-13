@@ -10,10 +10,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var MongoCLI *mongo.Client
+var MongoDatabase *mongo.Database
 
 // using mongodb atlas https://cloud.mongodb.com/
-func InitMongoDB(cfg *Config) (*mongo.Client, error) {
+func InitMongoDB(cfg *Config) (*mongo.Database, error) {
 	url := fmt.Sprintf("mongodb+srv://%s:%s@%s.mongodb.net/?retryWrites=true&w=majority", cfg.MongoDB.Username, cfg.MongoDB.Password, cfg.MongoDB.Cluster)
 	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
 	opts := options.Client().ApplyURI(url).SetServerAPIOptions(serverAPI)
@@ -29,14 +29,14 @@ func InitMongoDB(cfg *Config) (*mongo.Client, error) {
 		return nil, fmt.Errorf("failed to ping MongoDB: %w", err)
 	}
 
-	MongoCLI = db
+	MongoDatabase = db.Database(cfg.MongoDB.Name)
 
 	log.Println("Succees to connect to mongodb")
-	return db, nil
+	return MongoDatabase, nil
 }
 
 // using mongodb shell (local)
-func InitLocalMongoDB(cfg *Config) (*mongo.Client, error) {
+func InitLocalMongoDB(cfg *Config) (*mongo.Database, error) {
 	url := fmt.Sprintf("mongodb://%s:%s", cfg.MongoDB.Host, cfg.MongoDB.Port)
 	opts := options.Client().ApplyURI(url)
 	opts.SetAuth(options.Credential{
@@ -56,8 +56,8 @@ func InitLocalMongoDB(cfg *Config) (*mongo.Client, error) {
 		return nil, fmt.Errorf("failed to ping MongoDB: %w", err)
 	}
 
-	MongoCLI = db
+	MongoDatabase = db.Database(cfg.MongoDB.Name)
 
 	log.Println("Successfully connected to MongoDB")
-	return db, nil
+	return MongoDatabase, nil
 }

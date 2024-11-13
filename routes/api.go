@@ -12,16 +12,18 @@ import (
 
 	"github.com/go-playground/validator"
 	"github.com/labstack/echo/v4"
+	"go.mongodb.org/mongo-driver/mongo"
 	"gorm.io/gorm"
 )
 
 type HTTPServer struct {
 	db         *gorm.DB
+	mongo      *mongo.Database
 	cfg        *config.Config
 	httpServer *echo.Echo
 }
 
-func NewHTTPServer(cfg *config.Config, db *gorm.DB) HTTPServer {
+func NewHTTPServer(cfg *config.Config, db *gorm.DB, mongo *mongo.Database) HTTPServer {
 	e := echo.New()
 	e.Use(middleware.LogMiddleware)
 	e.Validator = helpers.NewValidator(validator.New())
@@ -29,6 +31,7 @@ func NewHTTPServer(cfg *config.Config, db *gorm.DB) HTTPServer {
 	return HTTPServer{
 		db:         db,
 		cfg:        cfg,
+		mongo:      mongo,
 		httpServer: e,
 	}
 }
@@ -52,7 +55,7 @@ func testPort(port int) (int, error) {
 }
 
 func (s *HTTPServer) RunHTTPServer() {
-	api := InitVersionOne(s.httpServer, s.db, s.cfg)
+	api := InitVersionOne(s.httpServer, s.db, s.mongo, s.cfg)
 
 	s.httpServer.Static(api.cfg.HTTP.AssetEndpoint, api.cfg.AssetStorage.Path)
 	api.UserAndAuth()

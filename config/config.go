@@ -92,7 +92,7 @@ func LoadConfig() (*Config, error) {
 	mongoUser, _ := configDefaults("MONGODB_USER", "user")
 	mongoPass, _ := configDefaults("MONGODB_PASS", "user")
 	mongoCluster, _ := configDefaults("MONGODB_CLUSTER", "cluster0")
-	mongoName, _ := configDefaults("MONGODB_NAME", "db_boilerplate")
+	mongoName, _ := configDefaults("MONGODB_NAME", "mongo_database")
 
 	var cfg Config = Config{
 		Database: Database{

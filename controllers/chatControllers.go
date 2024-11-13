@@ -2,23 +2,26 @@ package controllers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"simple-crud-rnd/config"
-	"simple-crud-rnd/helpers"
+	"simple-crud-rnd/helpers/utils"
+	"simple-crud-rnd/models"
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
-	"gorm.io/gorm"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type ChatController struct {
-	db        *gorm.DB
+	mongo     *mongo.Database
+	chatModel *models.ChatModel
 	cfg       *config.Config
-	wsManager *helpers.WebSocketManager
+	wsManager *utils.WebSocketManager
 }
 
-func NewChatController(db *gorm.DB, cfg *config.Config, wsManager *helpers.WebSocketManager) *ChatController {
-	return &ChatController{db, cfg, wsManager}
+func NewChatController(mongo *mongo.Database, chatModel *models.ChatModel, cfg *config.Config, wsManager *utils.WebSocketManager) *ChatController {
+	return &ChatController{mongo, chatModel, cfg, wsManager}
 }
 
 /*
@@ -38,24 +41,47 @@ func (ch *ChatController) WebSocketHandler(c echo.Context) error {
 		return fmt.Errorf("could not upgrade to WebSocket: %v", err)
 	}
 
-	// Get user ID form query parameter for the client identifier
+	// Get user ID and recipient ID from query parameters
 	userID := c.QueryParam("user_id")
-	if userID == "" {
-		return fmt.Errorf("user_id is required")
+	recipientID := c.QueryParam("recipient_id")
+
+	// Validate user ID and recipient ID
+	if userID == "" || recipientID == "" {
+		log.Printf("Missing user_id or recipient_id")
+		conn.WriteJSON(map[string]string{"error": "user_id and recipient_id are required"})
+		conn.Close()
+		return nil
 	}
 
-	client := &helpers.Client{
+	// Fetch and send chat history to the user
+	history, err := ch.chatModel.RetrieveChatHistory(userID, recipientID)
+	if err != nil {
+		log.Printf("Failed to retrieve chat history for user %s: %v", userID, err)
+		conn.WriteJSON(map[string]string{"error": "failed to retrieve chat history"})
+		conn.Close()
+		return nil
+	}
+
+	for _, msg := range history {
+		if err := conn.WriteJSON(msg); err != nil {
+			log.Printf("Error sending history message to client %s: %v", userID, err)
+			conn.Close()
+			return nil
+		}
+	}
+
+	// Create a new client and register it
+	client := &utils.Client{
 		ID:     userID,
 		Socket: conn,
-		Send:   make(chan helpers.Message),
+		Send:   make(chan utils.Message),
 	}
 
-	// Register the client with the manager
 	ch.wsManager.Register <- client
 
-	// Handle incoming messages from the client
+	// Start a goroutine to listen for messages from the client
 	go client.ListenForMessages(ch.wsManager)
 
-	// Keep connection open
-	select {}
+	// Keep WebSocket connection open without returning an HTTP response
+	return nil
 }

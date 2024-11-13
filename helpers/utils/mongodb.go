@@ -1,4 +1,4 @@
-package helpers
+package utils
 
 import (
 	"context"
@@ -8,8 +8,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func InsertLogDataToMongoDB(ctx context.Context, db, collection string, data *structs.LogEntry) error {
-	_, err := config.MongoCLI.Database(db).Collection(collection).InsertOne(ctx, bson.D{
+func InsertLogDataToMongoDB(ctx context.Context, collection string, data *structs.LogEntry) error {
+	_, err := config.MongoDatabase.Collection(collection).InsertOne(ctx, bson.D{
 		{Key: "url", Value: data.URL},
 		{Key: "path", Value: data.Method},
 		{Key: "ip", Value: data.IP},
@@ -19,5 +19,9 @@ func InsertLogDataToMongoDB(ctx context.Context, db, collection string, data *st
 		{Key: "datetime", Value: data.Datetime},
 	})
 
+	return err
+}
+func InsertChatMessage(message Message, collection string) error {
+	_, err := config.MongoDatabase.Collection(collection).InsertOne(context.Background(), message)
 	return err
 }

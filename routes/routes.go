@@ -6,25 +6,29 @@ import (
 	"simple-crud-rnd/config"
 	"simple-crud-rnd/controllers"
 	"simple-crud-rnd/helpers"
+	"simple-crud-rnd/helpers/utils"
 	"simple-crud-rnd/middleware"
 	"simple-crud-rnd/models"
 
 	"github.com/labstack/echo/v4"
+	"go.mongodb.org/mongo-driver/mongo"
 	"gorm.io/gorm"
 )
 
 type APIVersionOne struct {
 	e          *echo.Echo
 	db         *gorm.DB
+	mongo      *mongo.Database
 	cfg        *config.Config
 	api        *echo.Group
 	assetsPath string
 }
 
-func InitVersionOne(e *echo.Echo, db *gorm.DB, cfg *config.Config) *APIVersionOne {
+func InitVersionOne(e *echo.Echo, db *gorm.DB, mongo *mongo.Database, cfg *config.Config) *APIVersionOne {
 	return &APIVersionOne{
 		e,
 		db,
+		mongo,
 		cfg,
 		e.Group("/api/v1"),
 		fmt.Sprintf("%s/%s", cfg.HTTP.Domain, cfg.HTTP.AssetEndpoint),
@@ -68,12 +72,13 @@ func (av *APIVersionOne) Role() {
 }
 
 func (av *APIVersionOne) Chat() {
-	manager := helpers.NewWebSocketManager()
+	chatModel := models.NewChatModel(av.mongo)
+
+	manager := utils.NewWebSocketManager()
 	go manager.Start()
 
-	// chatModel := models.NewChatModel(av.db)
-	chatController := controllers.NewChatController(av.db, av.cfg, manager)
+	chatController := controllers.NewChatController(av.mongo, chatModel, av.cfg, manager)
 
 	chat := av.api.Group("/chat")
-	chat.GET("/ws", chatController.WebSocketHandler)
+	chat.GET("/ws", chatController.WebSocketHandler, middleware.RoleMiddleware(""))
 }
