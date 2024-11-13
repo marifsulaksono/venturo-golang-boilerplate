@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"simple-crud-rnd/config"
+	"simple-crud-rnd/helpers"
 	"simple-crud-rnd/helpers/utils"
 	"simple-crud-rnd/models"
 
@@ -42,21 +43,30 @@ func (ch *ChatController) WebSocketHandler(c echo.Context) error {
 	}
 
 	// Get user ID and recipient ID from query parameters
-	userID := c.QueryParam("user_id")
+	// userID := c.QueryParam("user_id")
 	recipientID := c.QueryParam("recipient_id")
+	accessToken := c.QueryParam("access_token")
+
+	user, err := helpers.VerifyTokenJWT(accessToken, false)
+	if err != nil {
+		log.Printf("Missing sender_id or recipient_id")
+		conn.WriteJSON(map[string]string{"error": "Unauthorized, please login first"})
+		conn.Close()
+		return nil
+	}
 
 	// Validate user ID and recipient ID
-	if userID == "" || recipientID == "" {
-		log.Printf("Missing user_id or recipient_id")
-		conn.WriteJSON(map[string]string{"error": "user_id and recipient_id are required"})
+	if recipientID == "" {
+		log.Printf("Missing sender_id or recipient_id")
+		conn.WriteJSON(map[string]string{"error": "sender_id and recipient_id are required"})
 		conn.Close()
 		return nil
 	}
 
 	// Fetch and send chat history to the user
-	history, err := ch.chatModel.RetrieveChatHistory(userID, recipientID)
+	history, err := ch.chatModel.RetrieveChatHistory(user.Email, recipientID)
 	if err != nil {
-		log.Printf("Failed to retrieve chat history for user %s: %v", userID, err)
+		log.Printf("Failed to retrieve chat history for user %s: %v", user.Email, err)
 		conn.WriteJSON(map[string]string{"error": "failed to retrieve chat history"})
 		conn.Close()
 		return nil
@@ -64,7 +74,7 @@ func (ch *ChatController) WebSocketHandler(c echo.Context) error {
 
 	for _, msg := range history {
 		if err := conn.WriteJSON(msg); err != nil {
-			log.Printf("Error sending history message to client %s: %v", userID, err)
+			log.Printf("Error sending history message to client %s: %v", user.Email, err)
 			conn.Close()
 			return nil
 		}
@@ -72,7 +82,7 @@ func (ch *ChatController) WebSocketHandler(c echo.Context) error {
 
 	// Create a new client and register it
 	client := &utils.Client{
-		ID:     userID,
+		ID:     user.Email,
 		Socket: conn,
 		Send:   make(chan utils.Message),
 	}

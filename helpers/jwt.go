@@ -26,7 +26,7 @@ func GenerateTokenJWT(user *structs.User, isRefresh bool) (string, *time.Time, e
 	expiredAt := time.Now().Add(time.Second * time.Duration(expiredInSecond))
 	claims := &structs.JWTUser{
 		ID:              user.ID,
-		Email:           user.Name,
+		Email:           user.Email,
 		UpdatedSecurity: user.UpdatedSecurity,
 		Access:          user.Role.Access,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -72,7 +72,7 @@ func VerifyTokenJWT(tokenString string, isRefresh bool) (*structs.User, error) {
 		}
 
 		user.ID = claims.ID
-		user.Name = claims.Email
+		user.Email = claims.Email
 		user.Role.Access = claims.Access
 
 		return user, nil

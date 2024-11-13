@@ -80,5 +80,5 @@ func (av *APIVersionOne) Chat() {
 	chatController := controllers.NewChatController(av.mongo, chatModel, av.cfg, manager)
 
 	chat := av.api.Group("/chat")
-	chat.GET("/ws", chatController.WebSocketHandler, middleware.RoleMiddleware(""))
+	chat.GET("/ws", chatController.WebSocketHandler)
 }

@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-playground/validator"
 	"github.com/labstack/echo/v4"
+	eMiddleware "github.com/labstack/echo/v4/middleware"
 	"go.mongodb.org/mongo-driver/mongo"
 	"gorm.io/gorm"
 )
@@ -25,6 +26,7 @@ type HTTPServer struct {
 
 func NewHTTPServer(cfg *config.Config, db *gorm.DB, mongo *mongo.Database) HTTPServer {
 	e := echo.New()
+	e.Use(eMiddleware.CORS())
 	e.Use(middleware.LogMiddleware)
 	e.Validator = helpers.NewValidator(validator.New())
 
