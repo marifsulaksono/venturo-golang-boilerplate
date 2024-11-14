@@ -9,7 +9,7 @@ import (
 )
 
 func InsertLogDataToMongoDB(ctx context.Context, db, collection string, data *structs.LogEntry) error {
-	_, err := config.MongoCLI.Database(db).Collection(collection).InsertOne(ctx, bson.D{
+	_, err := config.MongoDatabase.Collection(collection).InsertOne(ctx, bson.D{
 		{Key: "url", Value: data.URL},
 		{Key: "path", Value: data.Method},
 		{Key: "ip", Value: data.IP},
