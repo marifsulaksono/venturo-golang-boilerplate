@@ -29,90 +29,83 @@
 
     <script>
         let socket;
-
+    
         function connectWebSocket() {
-            const receiptId = document.getElementById('receiver_id').value;
-            if (!receiptId) {
-                alert("Please enter a Receiver ID!");
-                return;
-            }
-
+            const receiverId = document.getElementById('receiver_id').value;
             const accessToken = localStorage.getItem('access_token');
-            if (!accessToken) {
-                alert("You are not logged in!");
+            const userId = localStorage.getItem('email');  // Get the sender ID from local storage
+    
+            if (!receiverId || !accessToken || !userId) {
+                alert("Ensure you are logged in and provide a Receiver ID!");
                 return;
             }
-            
-            const id = localStorage.getItem('email');
-            if (!id) {
-                alert("You are not logged in!");
-                return;
-            }
-
-            // Open WebSocket connection
-            socket = new WebSocket(`ws://localhost:8080/api/v1/chat/ws?recipient_id=${receiptId}&access_token=${accessToken}`);
-            // socket = new WebSocket(`ws://localhost:8080/api/v1/chat/ws?sender_id=${email}&recipient_id=${receiptId}&access_token=${accessToken}`);
-
+    
+            // Open WebSocket connection with sender ID, receiver ID, and access token
+            socket = new WebSocket(`ws://localhost:8080/api/v1/chat/ws?user_id=${userId}&recipient_id=${receiverId}&access_token=${accessToken}`);
+    
             // Handle opened connection
             socket.onopen = function() {
-                appendMessage(`Connected as User ${id}`);
-                document.getElementById('disconnect-btn').style.display = 'inline';  // Show Disconnect button
+                appendMessage(`Connected as User ${userId}`);
+                document.getElementById('disconnect-btn').style.display = 'inline';
             };
-
-            // Listen for messages
+    
+            // Listen for messages and history
             socket.onmessage = function(event) {
                 const messageData = JSON.parse(event.data);
-
-                // Format the time, if available
-                const time = messageData.time ? new Date(messageData.time).toLocaleString() : "unknown time";
-
-                // Check if the message is for the current user
-                if (messageData.receiver === userId) {
-                    appendMessage(`[${time}] ${messageData.sender} to You: ${messageData.content}`);
+    
+                if (Array.isArray(messageData)) {
+                    // Assume messageData is an array of chat history on initial connection
+                    messageData.forEach(msg => appendFormattedMessage(msg, userId));
                 } else {
-                    appendMessage(`[${time}] You to ${messageData.receiver}: ${messageData.content}`);
+                    // Handle individual message
+                    appendFormattedMessage(messageData, userId);
                 }
             };
-
+    
             // Handle closed connection
             socket.onclose = function(event) {
                 appendMessage(`Disconnected (Code: ${event.code}, Reason: ${event.reason})`);
-                document.getElementById('disconnect-btn').style.display = 'none';  // Hide Disconnect button
+                document.getElementById('disconnect-btn').style.display = 'none';
             };
-
-            // Error handling
+    
             socket.onerror = function(error) {
                 console.error("WebSocket Error:", error);
             };
         }
-
+    
         function sendMessage() {
             const receiverId = document.getElementById('receiver_id').value;
             const messageContent = document.getElementById('message').value;
-
-            if (!receiverId || !messageContent) {
+            const userId = localStorage.getItem('email');
+    
+            if (!receiverId || !messageContent || !userId) {
                 alert("Please enter both receiver ID and message content.");
                 return;
             }
-            
-            const id = localStorage.getItem('email');
-            if (!id) {
-                alert("You are not logged in!");
-                return;
-            }
-
+    
             const message = {
-                sender: id,
+                sender: userId,
                 receiver: receiverId,
-                content: messageContent
+                content: messageContent,
+                time: new Date().toISOString()  // Adding time for consistency
             };
-
+    
             // Send the message
             socket.send(JSON.stringify(message));
             appendMessage(`[${new Date().toLocaleString()}] You to ${receiverId}: ${messageContent}`);
             document.getElementById('message').value = '';
         }
-
+    
+        function appendFormattedMessage(messageData, userId) {
+            const time = messageData.time ? new Date(messageData.time).toLocaleString() : "unknown time";
+    
+            if (messageData.receiver === userId) {
+                appendMessage(`[${time}] ${messageData.sender} to You: ${messageData.content}`);
+            } else {
+                appendMessage(`[${time}] You to ${messageData.receiver}: ${messageData.content}`);
+            }
+        }
+    
         function appendMessage(message) {
             const chatBox = document.getElementById('chat-box');
             const newMessage = document.createElement('p');
@@ -120,25 +113,24 @@
             chatBox.appendChild(newMessage);
             chatBox.scrollTop = chatBox.scrollHeight;
         }
-
+    
         function clearChats() {
             const chatBox = document.getElementById('chat-box');
             chatBox.innerHTML = '';
-            
             appendMessage("<Chat history cleared...");
         }
-
+    
         function clearMessages() {
             const messageArea = document.getElementById('message');
             messageArea.value = '';
         }
-
+    
         function disconnectWebSocket() {
             if (socket) {
                 socket.close();
             }
         }
-
+    
         function logout() {
             localStorage.removeItem('access_token');
             localStorage.removeItem('email');

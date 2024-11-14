@@ -1,6 +1,11 @@
 package structs
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
 
 func (TokenAuth) TableName() string {
 	return "m_token_auth"
@@ -26,12 +31,18 @@ type (
 	}
 
 	TokenAuth struct {
-		UserID       string `json:"user_id" gorm:"not null;type:char(36)"`
-		RefreshToken string `json:"refresh_token" gorm:"not null"`
-		IP           string `json:"ip" gorm:"not null;type:char(100)"`
+		ID           uuid.UUID `json:"id" gorm:"primaryKey;type:char(36);not null"`
+		UserID       string    `json:"user_id" gorm:"not null;type:char(36)"`
+		RefreshToken string    `json:"refresh_token" gorm:"not null"`
+		IP           string    `json:"ip" gorm:"not null;type:char(100)"`
 	}
 
 	RefreshAccessToken struct {
 		RefreshToken string `json:"refresh_token" validate:"required"`
 	}
 )
+
+func (u *TokenAuth) BeforeCreate(tx *gorm.DB) error {
+	u.ID = uuid.New()
+	return nil
+}
